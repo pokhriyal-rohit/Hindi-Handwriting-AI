@@ -165,6 +165,7 @@ cython_debug/
 # Data and models
 data/raw/
 data/processed/
+data/datasets
 models/checkpoints/
 models/pretrained/
 outputs/
