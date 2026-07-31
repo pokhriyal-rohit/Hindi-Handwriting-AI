@@ -35,3 +35,17 @@ All metrics implement `BaseMetric` providing:
 - **Purpose**: Verifies the final Euclidean stopping position of the generated handwriting matches the target.
 - **Outputs**: `endpoint_error`
 
+### Geometry Metrics (`src/evaluation/metrics/geometry.py`)
+
+#### PathLengthDifferenceMetric (`path_length`)
+- **Purpose**: Evaluates the absolute difference in the total Euclidean arc length of the generated curves.
+- **Outputs**: `pred_length`, `target_length`, `length_difference`
+
+#### BoundingBoxDifferenceMetric (`bounding_box`)
+- **Purpose**: Computes geometric scaling differences by comparing bounding box width, height, and total area.
+- **Outputs**: `width_difference`, `height_difference`, `area_difference`
+
+#### SmoothnessScoreMetric (`smoothness`)
+- **Purpose**: Computes angular variance between sequential coordinate line segments. A higher variance implies jittery, unsmooth handwriting.
+- **Outputs**: `pred_smoothness`, `target_smoothness`, `smoothness_difference`
+

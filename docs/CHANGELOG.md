@@ -34,3 +34,6 @@
   - Created `src/evaluation/metrics/trajectory.py`.
   - Implemented geometric trajectory metrics: `DTWMetric`, `FrechetMetric`, `StrokeCountDifferenceMetric`, and `EndpointErrorMetric`.
   - Used `fastdtw` and `similaritymeasures` wrapped in safe import checks for robust, optimized time-series evaluation.
+- **Subsystem 3: Geometry Metrics**
+  - Created `src/evaluation/metrics/geometry.py`.
+  - Implemented static geometry metrics: `PathLengthDifferenceMetric`, `BoundingBoxDifferenceMetric`, and `SmoothnessScoreMetric` (computing angular variance).

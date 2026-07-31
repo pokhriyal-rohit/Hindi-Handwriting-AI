@@ -25,6 +25,16 @@ def run_evaluation_tests():
         test_dtw_frechet_metrics()
         print("[PASS] DTW/Frechet gracefully tested")
         
+        from tests.test_evaluation_geometry import test_path_length_metric, test_bounding_box_metric, test_smoothness_metric
+        test_path_length_metric()
+        print("[PASS] Path Length metric test passed")
+        
+        test_bounding_box_metric()
+        print("[PASS] Bounding Box metric test passed")
+        
+        test_smoothness_metric()
+        print("[PASS] Smoothness gracefully tested")
+        
         print("\nAll evaluation tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
