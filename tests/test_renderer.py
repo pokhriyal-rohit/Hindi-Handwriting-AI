@@ -92,3 +92,32 @@ def test_invalid_trajectory_exception():
         assert False, "Should have raised InvalidTrajectoryError"
     except InvalidTrajectoryError:
         pass
+
+def test_cache_hit_and_miss(dummy_trajectory):
+    from pathlib import Path
+    config = RenderingConfig()
+    engine = RenderingEngine(config)
+    
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, "output.svg")
+        
+        # Override cache directory to be in tmpdir for testing
+        engine.cache.cache_dir = Path(tmpdir) / ".cache"
+        engine.cache.cache_dir.mkdir(exist_ok=True)
+        
+        # 1. Miss (Generates file and caches it)
+        engine.render(dummy_trajectory, output_path, format="svg")
+        assert os.path.exists(output_path)
+        
+        # Verify cache file exists
+        cache_path = engine.cache.get_cached_path(dummy_trajectory, config, "svg")
+        assert cache_path is not None
+        assert cache_path.exists()
+        
+        # 2. Delete original output
+        os.remove(output_path)
+        assert not os.path.exists(output_path)
+        
+        # 3. Hit (Serves from cache directly)
+        engine.render(dummy_trajectory, output_path, format="svg")
+        assert os.path.exists(output_path)

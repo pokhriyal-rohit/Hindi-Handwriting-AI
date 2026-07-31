@@ -3,6 +3,7 @@ from src.datasets.structures import TrajectorySample
 from src.renderer.config import RenderingConfig
 from src.registry import Registry
 from src.renderer.layout.page import PageLayout
+from src.renderer.cache import RendererCache
 from src.renderer.exceptions import RendererError, InvalidTrajectoryError, LayoutError, PluginRegistrationError, ExporterError
 
 class RenderingEngine:
@@ -12,6 +13,7 @@ class RenderingEngine:
     """
     def __init__(self, config: RenderingConfig = None):
         self.config = config if config else RenderingConfig()
+        self.cache = RendererCache()
         
     def _apply_layout(self, sample: TrajectorySample) -> TrajectorySample:
         layout_cls = Registry.get_layout(self.config.layout_model)
@@ -91,7 +93,9 @@ class RenderingEngine:
             # 6. Ink Simulation (Appearance properties)
             working_sample = self._apply_ink(working_sample)
             
-            # 7. Check Cache (Future/Optional before heavy rasterization)
+            # 7. Check Cache
+            if self.cache.serve_from_cache(trajectory, self.config, format, output_path):
+                return
             
             # 8. Export Generation
             exporter_cls = Registry.get_exporter(format)
@@ -104,6 +108,9 @@ class RenderingEngine:
                 exporter.export(working_sample, output_path)
                 if not exporter.validate(output_path):
                     raise ExporterError(f"Validation failed for '{format}' exporter at '{output_path}'.")
+                
+                # Save successful export to cache
+                self.cache.save_to_cache(trajectory, self.config, format, output_path)
             except Exception as e:
                 raise ExporterError(f"Exporter '{format}' failed during execution: {e}")
             finally:
