@@ -1,6 +1,7 @@
 import logging
 from typing import Optional, Any
 from src.inference.config import InferenceConfig
+from src.inference.cache import InferenceCache
 from src.renderer.config import RenderingConfig
 from src.renderer.pipeline import RenderingEngine
 
@@ -16,6 +17,7 @@ class InferenceSession:
         self.tokenizer: Any = None
         self.predictor: Any = None
         self.renderer: Optional[RenderingEngine] = None
+        self.cache = InferenceCache()
         
         self._initialize()
 

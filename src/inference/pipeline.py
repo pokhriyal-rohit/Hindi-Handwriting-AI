@@ -75,25 +75,42 @@ class InferencePipeline:
         """
         logger.info(f"Generating for text: '{text}'")
         timings = {}
+        cache_stats = {"trajectory_hit": False}
         t_start = time.perf_counter()
         
         # 1. Preprocessing
         clean_text = self._preprocess(text)
         
-        # 2. Tokenization
-        tokens = self._tokenize(clean_text)
+        # --- CACHE CHECK ---
+        trajectory = None
+        tokens = []
+        raw_outputs = []
         
-        # 3. Model Prediction
-        if not self.session.predictor:
-            raise RuntimeError("Pipeline execution failed: Predictor is not loaded in Session.")
-        raw_outputs = self.session.predictor.predict(tokens)
-        
-        # 4. Coordinate Reconstruction
-        trajectory = self._reconstruct_coordinates(raw_outputs, clean_text)
-        
-        # 5. Post Processing
-        for processor in self.session.postprocessors:
-            trajectory = processor.process(trajectory)
+        if self.session.config.enable_cache:
+            trajectory = self.session.cache.get_trajectory(clean_text)
+            
+        if trajectory is not None:
+            logger.info("Cache hit for trajectory.")
+            cache_stats["trajectory_hit"] = True
+        else:
+            # 2. Tokenization
+            tokens = self._tokenize(clean_text)
+            
+            # 3. Model Prediction
+            if not self.session.predictor:
+                raise RuntimeError("Pipeline execution failed: Predictor is not loaded in Session.")
+            raw_outputs = self.session.predictor.predict(tokens)
+            
+            # 4. Coordinate Reconstruction
+            trajectory = self._reconstruct_coordinates(raw_outputs, clean_text)
+            
+            # 5. Post Processing
+            for processor in self.session.postprocessors:
+                trajectory = processor.process(trajectory)
+                
+            # Store in cache
+            if self.session.config.enable_cache:
+                self.session.cache.set_trajectory(clean_text, trajectory)
         
         # 6. Layout & Rendering (We skip file saving for pure pipeline dict for now)
         # (Export paths handled later)
@@ -106,6 +123,7 @@ class InferencePipeline:
             trajectory=trajectory,
             configuration=self.session.config,
             timing=timings,
+            cache_statistics=cache_stats,
             metadata={
                 "raw_tokens": tokens,
                 "raw_outputs": raw_outputs

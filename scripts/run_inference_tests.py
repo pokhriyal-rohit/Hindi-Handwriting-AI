@@ -27,6 +27,10 @@ def run_inference_tests():
         test_inference_result_serialization()
         print("[PASS] Inference Result serialization test passed")
         
+        from tests.test_inference_cache import test_inference_cache
+        test_inference_cache()
+        print("[PASS] Inference Cache test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
