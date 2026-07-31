@@ -10,16 +10,16 @@ def test_inference_pipeline():
     result = pipeline.generate("AB")
     
     # Assertions
-    assert result["input_text"] == "AB"
-    assert result["normalized_text"] == "AB"
-    assert result["raw_tokens"] == [65, 66] # ASCII for A, B
+    assert result.input_text == "AB"
+    assert result.normalized_text == "AB"
+    assert result.metadata["raw_tokens"] == [65, 66] # ASCII for A, B
     
     # Dummy Predictor returns 2 points per token, pen up at very end. 
     # Tokens = 2 -> 4 raw outputs.
-    assert len(result["raw_outputs"]) == 4
+    assert len(result.metadata["raw_outputs"]) == 4
     
     # Reconstructed trajectory
-    trajectory = result["trajectory"]
+    trajectory = result.trajectory
     assert trajectory.text == "AB"
     
     # 4 points, the last one has pen_state=0, so it will flush 1 stroke of 4 points

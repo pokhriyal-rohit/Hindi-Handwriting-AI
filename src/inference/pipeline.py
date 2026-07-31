@@ -1,6 +1,8 @@
 import logging
 from typing import Dict, Any, List
+import time
 from src.inference.session import InferenceSession
+from src.inference.result import InferenceResult
 from src.datasets.structures import TrajectorySample, DatasetMetadata, Stroke, Point
 
 logger = logging.getLogger(__name__)
@@ -67,11 +69,13 @@ class InferencePipeline:
             metadata=metadata
         )
         
-    def generate(self, text: str) -> Dict[str, Any]:
+    def generate(self, text: str) -> InferenceResult:
         """
         The single entrypoint for generating handwriting.
         """
         logger.info(f"Generating for text: '{text}'")
+        timings = {}
+        t_start = time.perf_counter()
         
         # 1. Preprocessing
         clean_text = self._preprocess(text)
@@ -94,10 +98,16 @@ class InferencePipeline:
         # 6. Layout & Rendering (We skip file saving for pure pipeline dict for now)
         # (Export paths handled later)
         
-        return {
-            "input_text": text,
-            "normalized_text": clean_text,
-            "trajectory": trajectory,
-            "raw_tokens": tokens,
-            "raw_outputs": raw_outputs
-        }
+        timings["total_ms"] = (time.perf_counter() - t_start) * 1000.0
+        
+        return InferenceResult(
+            input_text=text,
+            normalized_text=clean_text,
+            trajectory=trajectory,
+            configuration=self.session.config,
+            timing=timings,
+            metadata={
+                "raw_tokens": tokens,
+                "raw_outputs": raw_outputs
+            }
+        )

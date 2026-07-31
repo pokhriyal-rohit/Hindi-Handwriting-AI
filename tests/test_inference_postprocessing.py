@@ -8,7 +8,7 @@ def test_inference_postprocessing():
     pipeline = InferencePipeline(session)
     
     result = pipeline.generate("TEST")
-    trajectory = result["trajectory"]
+    trajectory = result.trajectory
     
     # Assert metadata enricher ran
     assert trajectory.extensions.get("post_processed") is True

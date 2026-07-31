@@ -23,6 +23,10 @@ def run_inference_tests():
         test_inference_postprocessing()
         print("[PASS] Post Processing test passed")
         
+        from tests.test_inference_result import test_inference_result_serialization
+        test_inference_result_serialization()
+        print("[PASS] Inference Result serialization test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
