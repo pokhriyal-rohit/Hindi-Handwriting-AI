@@ -45,6 +45,13 @@ def run_evaluation_tests():
         test_system_memory_metric()
         print("[PASS] System Memory metric test passed")
         
+        from tests.test_evaluation_reports import test_report_generators, test_visualization
+        test_report_generators()
+        print("[PASS] Report Generators test passed")
+        
+        test_visualization()
+        print("[PASS] Visualization gracefully tested")
+        
         print("\nAll evaluation tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")

@@ -41,3 +41,6 @@
   - Created `src/evaluation/metrics/performance.py`.
   - Implemented `SVGGenerationTimeMetric` integrating `psutil` memory tracking and generating temporary renders inside the metric scope.
   - Implemented `InferenceLatencyMetric` and `SystemMemoryUsageMetric` tracking model metadata cleanly attached via the `TrajectorySample.extensions` schema.
+- **Subsystem 5: Visualization & Reports**
+  - Created `src/evaluation/reports/generators.py` supporting deterministic JSON, Markdown, and CSV summary generations.
+  - Created `src/evaluation/visualization/plotters.py` providing Matplotlib-based trajectory overlays for visual evaluations.
