@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Dict, Optional, Type
 
 class Registry:
     """
@@ -15,7 +15,8 @@ class Registry:
         "smoothers": {},
         "pressure_models": {},
         "ink_models": {},
-        "exporters": {}
+        "exporters": {},
+        "metrics": {}
     }
 
     @classmethod
@@ -108,5 +109,16 @@ class Registry:
         return wrapper
 
     @classmethod
-    def get_exporter(cls, name: str) -> Type[Any]:
+    def get_exporter(cls, name: str) -> Optional[Type]:
         return cls.get("exporters", name)
+
+    @classmethod
+    def register_metric(cls, name: str):
+        def decorator(metric_cls: Type):
+            cls._registry["metrics"][name] = metric_cls
+            return metric_cls
+        return decorator
+        
+    @classmethod
+    def get_metric(cls, name: str) -> Optional[Type]:
+        return cls.get("metrics", name)

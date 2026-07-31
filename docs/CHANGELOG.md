@@ -22,3 +22,11 @@
 - **Subsystem 5: Profiling & Visual Regression**
   - Integrated `time.perf_counter()` hooks directly into `RenderingEngine.render()` pipeline, logging microsecond-precision benchmarks to `docs/RENDERER_PROFILE.md`.
   - Implemented deterministic `test_visual_regression_svg` generating hardcoded baseline hashes in `tests/fixtures/svg/baseline_test_001.svg` to strictly catch unintended geometric scaling or configuration drifts.
+
+## [Unreleased] - Phase 7 Evaluation Framework
+### Added
+- **Subsystem 1: Metric Interfaces & Registry**
+  - Implemented `BaseMetric` contract defining `name`, `version`, `description`, `evaluate`, `validate`, and `summarize`.
+  - Expanded `@Registry.register_metric` dynamic plugin system.
+  - Implemented `EvaluationConfig` to freeze benchmark state and metadata (git commit, metric versions).
+  - Generated initial `docs/METRIC_REFERENCE.md` catalog.
