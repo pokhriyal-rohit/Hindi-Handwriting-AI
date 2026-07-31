@@ -1,0 +1,4 @@
+epochs: 2
+lr: 0.001
+model: BaselineLSTM
+vocab_size: 5000

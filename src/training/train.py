@@ -3,7 +3,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from src.training.dataset import SyntheticTrajectoryDataset, synthetic_collate_fn
+from src.training.dataset import SyntheticTrajectoryDataset, CustomTrajectoryDataset, synthetic_collate_fn
 from src.models.baseline_lstm import BaselineLSTM
 from src.training.loss import TrajectoryLoss
 from src.training.experiment import ExperimentTracker
@@ -22,8 +22,10 @@ def compute_grad_norm(model: torch.nn.Module) -> float:
 def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = None):
     tracker = ExperimentTracker(exp_id=exp_id)
     
-    dataset = SyntheticTrajectoryDataset()
-    # Batch size 5 to fit exactly the 5 words
+    import os
+    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "custom_hindi"))
+    dataset = CustomTrajectoryDataset(data_dir=data_dir)
+    # Batch size 5 for testing
     dataloader = DataLoader(dataset, batch_size=5, shuffle=True, collate_fn=synthetic_collate_fn)
     
     model = BaselineLSTM(vocab_size=5000, embed_dim=64, hidden_dim=128, max_out_len=200)
