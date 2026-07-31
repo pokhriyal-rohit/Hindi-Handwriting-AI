@@ -29,3 +29,19 @@ def test_dummy_predictor():
         assert False, "Should raise RuntimeError after shutdown"
     except RuntimeError:
         pass
+
+def test_deterministic_predictor():
+    import src.inference.predictor.deterministic
+    config = InferenceConfig()
+    predictor_cls = Registry.get_model("deterministic_hindi")
+    predictor = predictor_cls(config)
+    predictor.load_model()
+    
+    # Text: "नमस्ते" -> tokens via ord
+    tokens = [ord(c) for c in "नमस्ते"]
+    out1 = predictor.predict(tokens)
+    out2 = predictor.predict(tokens)
+    
+    # Must be perfectly reproducible
+    assert out1 == out2
+    assert len(out1) > 0

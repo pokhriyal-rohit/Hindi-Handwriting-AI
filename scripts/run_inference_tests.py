@@ -11,8 +11,9 @@ def run_inference_tests():
         test_session_initialization()
         print("[PASS] InferenceSession initialized successfully")
         
-        from tests.test_inference_predictor import test_dummy_predictor
+        from tests.test_inference_predictor import test_dummy_predictor, test_deterministic_predictor
         test_dummy_predictor()
+        test_deterministic_predictor()
         print("[PASS] Predictor contract test passed")
         
         from tests.test_inference_pipeline import test_inference_pipeline

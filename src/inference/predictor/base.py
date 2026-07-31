@@ -59,3 +59,6 @@ class DummyPredictor(BasePredictor):
 
     def shutdown(self) -> None:
         self.model = None
+
+# Ensure deterministic predictor is registered
+import src.inference.predictor.deterministic
