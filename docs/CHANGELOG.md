@@ -15,3 +15,7 @@
   - Upgraded `src/renderer/cache.py` to create a deterministic hash key incorporating trajectory metadata, geometrical paths, and plugin/renderer versioning.
   - Implemented `serve_from_cache` to bypass rasterization and file IO for exact rendering matches.
   - Added unit test validation to ensure cache hits skip exporter execution and return identical results.
+- **Subsystem 4: Advanced Layout Engine**
+  - Created `src/renderer/layout/advanced.py` housing `ParagraphLayout` and `NotebookLayout`.
+  - Implemented dynamic geometric wrapping algorithm for paragraph structures.
+  - Integrated `NotebookLayout` to forcefully align multiline text against consistent baseline heights.

@@ -121,3 +121,21 @@ def test_cache_hit_and_miss(dummy_trajectory):
         # 3. Hit (Serves from cache directly)
         engine.render(dummy_trajectory, output_path, format="svg")
         assert os.path.exists(output_path)
+
+def test_paragraph_layout(dummy_trajectory):
+    config = RenderingConfig(layout_model="paragraph")
+    config.export.canvas_width = 500
+    config.export.margin = 50
+    engine = RenderingEngine(config)
+    
+    # We create a wide trajectory that should trigger wrapping
+    wide_traj = dummy_trajectory
+    for i, pt in enumerate(wide_traj.strokes[0].points):
+        pt.x = i * 200 # Spaced out far to force wrap
+        
+    layout_sample = engine._apply_layout(wide_traj)
+    pts = layout_sample.to_array()
+    ys = [pt[1] for pt in pts]
+    
+    # Y coordinates should have shifted down due to line breaks
+    assert max(ys) > config.export.margin + 10

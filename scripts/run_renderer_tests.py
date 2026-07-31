@@ -4,7 +4,7 @@ import sys
 # Add parent directory to path to allow importing src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from tests.test_renderer import test_rendering_engine_initialization, test_svg_export, test_layout_scaling, test_invalid_trajectory_exception, test_cache_hit_and_miss, dummy_trajectory
+from tests.test_renderer import test_rendering_engine_initialization, test_svg_export, test_layout_scaling, test_invalid_trajectory_exception, test_cache_hit_and_miss, test_paragraph_layout, dummy_trajectory
 
 def run_tests():
     print("Running Renderer Tests...")
@@ -25,6 +25,9 @@ def run_tests():
         
         test_cache_hit_and_miss(traj)
         print("[PASS] Cache hit/miss test passed")
+        
+        test_paragraph_layout(traj)
+        print("[PASS] Paragraph layout test passed")
         
         print("\nAll rendering tests passed successfully!")
     except Exception as e:

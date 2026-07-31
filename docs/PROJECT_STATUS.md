@@ -15,5 +15,5 @@ The Rendering Engine is being upgraded into a standalone Graphics Framework.
 - **Subsystem 1: Configuration & Error Handling [COMPLETED]**
 - **Subsystem 2: Exporter Contract Upgrade [COMPLETED]**
 - **Subsystem 3: Multi-Level Caching [COMPLETED]**
-- **Subsystem 4: Advanced Layout Engine [IN PROGRESS]**
-- **Subsystem 5: Profiling & Visual Regression [PENDING]**
+- **Subsystem 4: Advanced Layout Engine [COMPLETED]**
+- **Subsystem 5: Profiling & Visual Regression [IN PROGRESS]**
