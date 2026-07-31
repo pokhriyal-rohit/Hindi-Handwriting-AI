@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hindi Handwriting Collector</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        h1 { color: #333; }
+        #word-display { font-size: 3rem; margin: 20px; font-weight: bold; color: #0056b3; }
+        canvas { border: 2px solid #333; background-color: #fff; cursor: crosshair; touch-action: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .controls { margin-top: 20px; }
+        button { padding: 10px 20px; font-size: 1.1rem; margin: 0 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button:hover { background-color: #0056b3; }
+        #clear-btn { background-color: #dc3545; }
+        #clear-btn:hover { background-color: #a71d2a; }
+        #status { margin-top: 15px; color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Dataset Collector</h1>
+    <p>Please write the following word naturally:</p>
+    <div id="word-display">नमस्ते</div>
+    
+    <canvas id="drawCanvas" width="800" height="400"></canvas>
+    
+    <div class="controls">
+        <button id="clear-btn" onclick="clearCanvas()">Clear</button>
+        <button onclick="saveTrajectory()">Save & Next</button>
+    </div>
+    
+    <div id="status"></div>
+
+    <script>
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d');
+        const wordDisplay = document.getElementById('word-display');
+        const statusDiv = document.getElementById('status');
+        
+        const words = ["नमस्ते", "दुनिया", "भारत", "अक्षर", "भाषा", "ज्ञान", "विज्ञान", "शांति", "प्रेम", "सत्य"];
+        let currentWordIndex = 0;
+        
+        let isDrawing = false;
+        let trajectory = []; // Array of strokes
+        let currentStroke = []; // Array of {x, y, t}
+        
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#000';
+
+        function startPosition(e) {
+            isDrawing = true;
+            currentStroke = [];
+            draw(e);
+        }
+
+        function endPosition() {
+            if (isDrawing) {
+                isDrawing = false;
+                ctx.beginPath();
+                if (currentStroke.length > 0) {
+                    trajectory.push([...currentStroke]);
+                }
+            }
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            const t = Date.now();
+            
+            currentStroke.push({x, y, t});
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseout', endPosition);
+        
+        canvas.addEventListener('touchstart', startPosition, {passive: false});
+        canvas.addEventListener('touchend', endPosition);
+        canvas.addEventListener('touchmove', draw, {passive: false});
+
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            trajectory = [];
+        }
+
+        function saveTrajectory() {
+            if (trajectory.length === 0) {
+                alert("Please write the word before saving!");
+                return;
+            }
+            
+            const payload = {
+                word: words[currentWordIndex],
+                canvas_width: canvas.width,
+                canvas_height: canvas.height,
+                timestamp: Date.now(),
+                strokes: trajectory
+            };
+            
+            fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                statusDiv.innerText = "Saved successfully!";
+                setTimeout(() => statusDiv.innerText = "", 2000);
+                
+                // Next word
+                currentWordIndex = (currentWordIndex + 1) % words.length;
+                wordDisplay.innerText = words[currentWordIndex];
+                clearCanvas();
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                statusDiv.innerText = "Error saving data!";
+                statusDiv.style.color = "red";
+            });
+        }
+        
+        // Initialize
+        wordDisplay.innerText = words[currentWordIndex];
+    </script>
+</body>
+</html>
