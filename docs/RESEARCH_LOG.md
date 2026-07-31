@@ -15,11 +15,14 @@ Every experiment follows the scientific method: **Observation → Hypothesis →
 ## Question
 [What specific question are we trying to answer?]
 
-## Motivation
-[Why are we running this experiment? What observation led to it?]
-
 ## Hypothesis
 [What do we expect to happen?]
+
+## Evidence Required
+[What specific metrics or observations must change to support the hypothesis?]
+
+## Success Criterion
+[What is the strict mathematical threshold for success?]
 
 ## Dataset
 - Manifest version: 
