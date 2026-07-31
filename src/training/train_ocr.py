@@ -12,18 +12,26 @@ from src.datasets.offline_dataset import OfflineDataset, offline_collate_fn
 from src.tokenizers.devanagari import DevanagariTokenizer
 from src.models.ocr.registry import build_ocr_model
 from src.evaluation.metrics.ocr import OCRMetrics
+from src.training.utils import setup_ddp, cleanup_ddp
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel
 
 def train_ocr_model(
     config: Dict[str, Any],
     exp_id: str,
     resume_checkpoint: str = None,
 ):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Starting OCR Training on device: {device}")
+    is_ddp, local_rank, global_rank = setup_ddp()
+    is_primary = (global_rank == 0)
+    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
+    
+    if is_primary:
+        print(f"Starting OCR Training on device: {device} | DDP: {is_ddp}")
     
     # Setup Experiment Directory
     exp_dir = os.path.join(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")), "experiments", "OCR", exp_id)
-    os.makedirs(exp_dir, exist_ok=True)
+    if is_primary:
+        os.makedirs(exp_dir, exist_ok=True)
     
     epochs = config.get("epochs", 50)
     batch_size = config.get("batch_size", 32)
@@ -44,18 +52,24 @@ def train_ocr_model(
         tokenizer.build_vocab(list(train_labels.values()))
     
     vocab_path = os.path.join(exp_dir, "vocab.json")
-    tokenizer.save_vocab(vocab_path)
-    print(f"Tokenizer built and saved. Vocab size: {tokenizer.vocab_size}")
+    if is_primary:
+        tokenizer.save_vocab(vocab_path)
+        print(f"Tokenizer built and saved. Vocab size: {tokenizer.vocab_size}")
     
     # 2. Datasets
     train_dataset = OfflineDataset(train_dir)
     val_dataset = OfflineDataset(val_dir)
     
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=offline_collate_fn)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=offline_collate_fn)
+    train_sampler = DistributedSampler(train_dataset, shuffle=True) if is_ddp else None
+    val_sampler = DistributedSampler(val_dataset, shuffle=False) if is_ddp else None
+    
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=(train_sampler is None), collate_fn=offline_collate_fn, sampler=train_sampler)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=offline_collate_fn, sampler=val_sampler)
     
     # 3. Model & Loss
     model = build_ocr_model(model_name, tokenizer.vocab_size, config).to(device)
+    if is_ddp:
+        model = DistributedDataParallel(model, device_ids=[local_rank] if device.type == "cuda" else None)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     criterion = torch.nn.CTCLoss(blank=0, zero_infinity=True).to(device)
     
@@ -65,16 +79,23 @@ def train_ocr_model(
     best_wer = float('inf')
     
     if resume_checkpoint:
-        ckpt = torch.load(resume_checkpoint)
-        model.load_state_dict(ckpt['model_state_dict'])
+        ckpt = torch.load(resume_checkpoint, map_location=device)
+        state_dict = ckpt['model_state_dict']
+        if is_ddp:
+            model.module.load_state_dict(state_dict)
+        else:
+            model.load_state_dict(state_dict)
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
         start_epoch = ckpt['epoch'] + 1
         best_loss = ckpt.get('best_loss', float('inf'))
         best_cer = ckpt.get('best_cer', float('inf'))
         best_wer = ckpt.get('best_wer', float('inf'))
-        print(f"Resumed from {resume_checkpoint} at epoch {start_epoch}")
+        if is_primary:
+            print(f"Resumed from {resume_checkpoint} at epoch {start_epoch}")
         
     for epoch in range(start_epoch, epochs + 1):
+        if is_ddp:
+            train_sampler.set_epoch(epoch)
         model.train()
         total_loss = 0.0
         t0 = time.time()
@@ -148,30 +169,35 @@ def train_ocr_model(
             mean_cer = cer_total / len(val_dataset)
             mean_wer = wer_total / len(val_dataset)
             
-            print(f"Epoch {epoch:03d} | Train: {avg_loss:.4f} | Val: {avg_val_loss:.4f} | CER: {mean_cer:.2f} | WER: {mean_wer:.2f} | {epoch_time:.2f}s")
-            
-            ckpt_data = {
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'best_loss': best_loss,
-                'best_cer': best_cer,
-                'best_wer': best_wer
-            }
-            
-            torch.save(ckpt_data, os.path.join(exp_dir, "latest.pt"))
-            
-            if avg_val_loss < best_loss:
-                best_loss = avg_val_loss
-                torch.save(ckpt_data, os.path.join(exp_dir, "best_loss.pt"))
-            if mean_cer < best_cer:
-                best_cer = mean_cer
-                torch.save(ckpt_data, os.path.join(exp_dir, "best_cer.pt"))
-            if mean_wer < best_wer:
-                best_wer = mean_wer
-                torch.save(ckpt_data, os.path.join(exp_dir, "best_wer.pt"))
+            if is_primary:
+                print(f"Epoch {epoch:03d} | Train: {avg_loss:.4f} | Val: {avg_val_loss:.4f} | CER: {mean_cer:.2f} | WER: {mean_wer:.2f} | {epoch_time:.2f}s")
+                
+                state_dict = model.module.state_dict() if is_ddp else model.state_dict()
+                ckpt_data = {
+                    'epoch': epoch,
+                    'model_state_dict': state_dict,
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'best_loss': best_loss,
+                    'best_cer': best_cer,
+                    'best_wer': best_wer
+                }
+                
+                torch.save(ckpt_data, os.path.join(exp_dir, "latest.pt"))
+                
+                if avg_val_loss < best_loss:
+                    best_loss = avg_val_loss
+                    torch.save(ckpt_data, os.path.join(exp_dir, "best_loss.pt"))
+                if mean_cer < best_cer:
+                    best_cer = mean_cer
+                    torch.save(ckpt_data, os.path.join(exp_dir, "best_cer.pt"))
+                if mean_wer < best_wer:
+                    best_wer = mean_wer
+                    torch.save(ckpt_data, os.path.join(exp_dir, "best_wer.pt"))
         else:
-            print(f"Epoch {epoch:03d} | Train: {avg_loss:.4f} | {epoch_time:.2f}s")
+            if is_primary:
+                print(f"Epoch {epoch:03d} | Train: {avg_loss:.4f} | {epoch_time:.2f}s")
             
-    print(f"OCR Training completed. Outputs saved to {exp_dir}")
+    if is_primary:
+        print(f"OCR Training completed. Outputs saved to {exp_dir}")
+    cleanup_ddp()
     return exp_dir

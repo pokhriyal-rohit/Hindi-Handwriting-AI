@@ -1,5 +1,25 @@
+import os
 import torch
+import torch.distributed as dist
 from src.datasets.structures import TrajectorySample, Stroke, Point
+
+def setup_ddp():
+    """
+    Initializes DistributedDataParallel if running via torchrun.
+    Returns (is_ddp, local_rank, global_rank).
+    """
+    if "RANK" in os.environ and "WORLD_SIZE" in os.environ:
+        dist.init_process_group("nccl")
+        local_rank = int(os.environ["LOCAL_RANK"])
+        global_rank = int(os.environ["RANK"])
+        torch.cuda.set_device(local_rank)
+        return True, local_rank, global_rank
+    return False, 0, 0
+
+def cleanup_ddp():
+    """Destroys the distributed process group."""
+    if dist.is_initialized():
+        dist.destroy_process_group()
 
 def tensor_to_trajectory(coords: torch.Tensor, text: str = "") -> TrajectorySample:
     """

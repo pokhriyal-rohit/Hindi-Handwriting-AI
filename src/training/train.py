@@ -1,13 +1,16 @@
+import os
 import time
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
+from torch.utils.data.distributed import DistributedSampler
+from torch.nn.parallel import DistributedDataParallel
 
+from src.training.utils import tensor_to_trajectory, setup_ddp, cleanup_ddp
 from src.datasets.online_dataset import SyntheticTrajectoryDataset, CustomTrajectoryDataset, CanonicalTrajectoryDataset, synthetic_collate_fn
 from src.models.baseline_lstm import BaselineLSTM
 from src.training.loss import TrajectoryLoss
 from src.training.experiment import ExperimentTracker
-from src.training.utils import tensor_to_trajectory
 from src.renderer.pipeline import RenderingEngine
 from src.renderer.config import RenderingConfig
 
@@ -86,9 +89,11 @@ def train_model(
     eval_every: int = 10,
     max_eval_samples: int = 20,
 ):
-    tracker = ExperimentTracker(exp_id=exp_id)
+    is_ddp, local_rank, global_rank = setup_ddp()
+    is_primary = (global_rank == 0)
 
-    import os
+    tracker = ExperimentTracker(exp_id=exp_id) if is_primary else None
+
     # We now strictly train on the canonical online dataset
     canonical_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "canonical", "online"))
     
@@ -103,49 +108,64 @@ def train_model(
     
     n_train = len(train_dataset)
     n_val   = len(val_dataset)
-    print(f"Canonical Dataset loaded: {n_train} train / {n_val} validation")
+    if is_primary:
+        print(f"Canonical Dataset loaded: {n_train} train / {n_val} validation")
 
-    dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=synthetic_collate_fn)
+    train_sampler = DistributedSampler(train_dataset, shuffle=True) if is_ddp else None
+    val_sampler = DistributedSampler(val_dataset, shuffle=False) if is_ddp else None
+
+    dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=(train_sampler is None), collate_fn=synthetic_collate_fn, sampler=train_sampler)
     
     if n_val > 0:
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=synthetic_collate_fn)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=synthetic_collate_fn, sampler=val_sampler)
     else:
         # If val is empty (e.g. single writer placed fully in train), handle gracefully
         val_loader = []
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Training on device: {device}")
+    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
+    if is_primary:
+        print(f"Training on device: {device} | DDP: {is_ddp}")
 
     model = BaselineLSTM(vocab_size=5000, embed_dim=64, hidden_dim=128, max_out_len=200).to(device)
+    if is_ddp:
+        model = DistributedDataParallel(model, device_ids=[local_rank] if device.type == "cuda" else None)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = TrajectoryLoss().to(device)
     
     start_epoch = 1
     if resume_checkpoint:
-        ckpt = torch.load(resume_checkpoint)
-        model.load_state_dict(ckpt['model_state_dict'])
+        ckpt = torch.load(resume_checkpoint, map_location=device)
+        state_dict = ckpt['model_state_dict']
+        if is_ddp:
+            model.module.load_state_dict(state_dict)
+        else:
+            model.load_state_dict(state_dict)
         optimizer.load_state_dict(ckpt['optimizer_state_dict'])
         start_epoch = ckpt['epoch'] + 1
-        print(f"Resumed from {resume_checkpoint} at epoch {start_epoch}")
+        if is_primary:
+            print(f"Resumed from {resume_checkpoint} at epoch {start_epoch}")
         
-    tracker.save_config({
-        "epochs": epochs,
-        "batch_size": batch_size,
-        "val_split": val_split,
-        "n_train": n_train,
-        "n_val": n_val,
-        "val_seed": 42,
-        "eval_every": eval_every,
-        "max_eval_samples": max_eval_samples,
-        "vocab_size": 5000,
-        "lr": 1e-3,
-        "model": "BaselineLSTM"
-    })
+    if is_primary:
+        tracker.save_config({
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "val_split": val_split,
+            "n_train": n_train,
+            "n_val": n_val,
+            "val_seed": 42,
+            "eval_every": eval_every,
+            "max_eval_samples": max_eval_samples,
+            "vocab_size": 5000,
+            "lr": 1e-3,
+            "model": "BaselineLSTM"
+        })
     
     renderer = RenderingEngine(RenderingConfig())
     
     t0_total = time.time()
     for epoch in range(start_epoch, epochs + 1):
+        if is_ddp:
+            train_sampler.set_epoch(epoch)
         model.train()
         total_loss = 0.0
         
@@ -186,80 +206,85 @@ def train_model(
 
         # ── Per-epoch geometry metrics on val set ─────────────────────────────
         geo_metrics: dict = {}
-        if val_loader and (epoch % eval_every == 0 or epoch == epochs):
+        if is_primary and val_loader and (epoch % eval_every == 0 or epoch == epochs):
             geo_metrics = _compute_val_geometry(
-                model, val_loader, max_eval_samples
+                model.module if is_ddp else model, val_loader, max_eval_samples
             )
 
         # ── Logging ───────────────────────────────────────────────────────────
-        geo_str = ""
-        if geo_metrics:
-            dtw = geo_metrics.get("dtw_mean")
-            ee  = geo_metrics.get("endpoint_error_mean")
-            geo_str = f" | DTW: {dtw:.1f}" if dtw is not None else ""
-            geo_str += f" | EE: {ee:.1f}" if ee is not None else ""
-
-        print(
-            f"Epoch {epoch:03d} | "
-            f"Train: {avg_loss:.4f} | Val: {avg_val_loss:.4f} | "
-            f"Grad: {grad_norm:.2f}{geo_str} | {epoch_time:.2f}s"
-        )
-
-        epoch_log = {
-            "loss":      avg_loss,
-            "val_loss":  avg_val_loss,
-            "grad_norm": grad_norm,
-            "lr":        optimizer.param_groups[0]["lr"],
-            "time_sec":  epoch_time,
-        }
-        if geo_metrics:
-            epoch_log.update(geo_metrics)
-        tracker.log_epoch(epoch, epoch_log)
-        
-        # Checkpoints logic (latest, best_loss, etc.)
-        ckpt_data = {
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'loss': avg_loss
-        }
-        
-        # Save latest
-        ckpt_dir = os.path.join(tracker.exp_dir, "checkpoints")
-        os.makedirs(ckpt_dir, exist_ok=True)
-        torch.save(ckpt_data, os.path.join(ckpt_dir, "latest.pt"))
-        # (In a real implementation, we would track best_loss, best_dtw over epochs and save accordingly)
-        best_dir = os.path.join(ckpt_dir, "best")
-        os.makedirs(best_dir, exist_ok=True)
-        # Dummy saving best for this epoch (just to satisfy structure)
-        torch.save(ckpt_data, os.path.join(best_dir, "loss.pt"))
-        if geo_metrics:
-            torch.save(ckpt_data, os.path.join(best_dir, "dtw.pt"))
-            torch.save(ckpt_data, os.path.join(best_dir, "endpoint.pt"))
-        # Generate qualitative outputs only at the end of training to avoid overhead
-        if epoch == epochs:
-            print("Generating final qualitative previews...")
-            model.eval()
-            with torch.no_grad():
-                tokens, t_lens, coords, c_lens = next(iter(dataloader))
-                tokens, coords = tokens.to(device), coords.to(device)
-                preds = model(tokens, target_len=coords.size(1))
-                
-                pred_traj = tensor_to_trajectory(preds[0, :c_lens[0]].cpu())
-                target_traj = tensor_to_trajectory(coords[0, :c_lens[0]].cpu())
-                
-                pred_path = tracker.get_path("predictions", "final_prediction.svg")
-                renderer.render(pred_traj, pred_path, format="svg")
-                
-                target_path = tracker.get_path("predictions", "final_target.svg")
-                renderer.render(target_traj, target_path, format="svg")
+        if is_primary:
+            geo_str = ""
+            if geo_metrics:
+                dtw = geo_metrics.get("dtw_mean")
+                ee  = geo_metrics.get("endpoint_error_mean")
+                geo_str = f" | DTW: {dtw:.1f}" if dtw is not None else ""
+                geo_str += f" | EE: {ee:.1f}" if ee is not None else ""
+    
+            print(
+                f"Epoch {epoch:03d} | "
+                f"Train: {avg_loss:.4f} | Val: {avg_val_loss:.4f} | "
+                f"Grad: {grad_norm:.2f}{geo_str} | {epoch_time:.2f}s"
+            )
+    
+            epoch_log = {
+                "loss":      avg_loss,
+                "val_loss":  avg_val_loss,
+                "grad_norm": grad_norm,
+                "lr":        optimizer.param_groups[0]["lr"],
+                "time_sec":  epoch_time,
+            }
+            if geo_metrics:
+                epoch_log.update(geo_metrics)
+            tracker.log_epoch(epoch, epoch_log)
+            
+            # Checkpoints logic (latest, best_loss, etc.)
+            state_dict = model.module.state_dict() if is_ddp else model.state_dict()
+            ckpt_data = {
+                'epoch': epoch,
+                'model_state_dict': state_dict,
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': avg_loss
+            }
+            
+            # Save latest
+            ckpt_dir = os.path.join(tracker.exp_dir, "checkpoints")
+            os.makedirs(ckpt_dir, exist_ok=True)
+            torch.save(ckpt_data, os.path.join(ckpt_dir, "latest.pt"))
+            # (In a real implementation, we would track best_loss, best_dtw over epochs and save accordingly)
+            best_dir = os.path.join(ckpt_dir, "best")
+            os.makedirs(best_dir, exist_ok=True)
+            # Dummy saving best for this epoch (just to satisfy structure)
+            torch.save(ckpt_data, os.path.join(best_dir, "loss.pt"))
+            if geo_metrics:
+                torch.save(ckpt_data, os.path.join(best_dir, "dtw.pt"))
+                torch.save(ckpt_data, os.path.join(best_dir, "endpoint.pt"))
+            # Generate qualitative outputs only at the end of training to avoid overhead
+            if epoch == epochs:
+                print("Generating final qualitative previews...")
+                model.eval()
+                with torch.no_grad():
+                    tokens, t_lens, coords, c_lens = next(iter(dataloader))
+                    tokens, coords = tokens.to(device), coords.to(device)
+                    preds = model(tokens, target_len=coords.size(1))
+                    
+                    pred_traj = tensor_to_trajectory(preds[0, :c_lens[0]].cpu())
+                    target_traj = tensor_to_trajectory(coords[0, :c_lens[0]].cpu())
+                    
+                    pred_path = tracker.get_path("predictions", "final_prediction.svg")
+                    renderer.render(pred_traj, pred_path, format="svg")
+                    
+                    target_path = tracker.get_path("predictions", "final_target.svg")
+                    renderer.render(target_traj, target_path, format="svg")
                 
     # Capture and save environment info
-    from src.utils.environment import capture_environment, save_environment
-    from src.utils.config import load_colab_config
-    cfg = load_colab_config()
-    env_info = capture_environment(cfg, train_dir, t0_total)
-    save_environment(env_info, tracker.exp_dir)
-                
-    print(f"Training completed. Outputs saved to {tracker.exp_dir}")
-    return tracker.exp_dir
+    if is_primary:
+        from src.utils.environment import capture_environment, save_environment
+        from src.utils.config import load_colab_config
+        cfg = load_colab_config()
+        env_info = capture_environment(cfg, train_dir, t0_total)
+        save_environment(env_info, tracker.exp_dir)
+                    
+        print(f"Training completed. Outputs saved to {tracker.exp_dir}")
+        
+    cleanup_ddp()
+    return tracker.exp_dir if is_primary else None
