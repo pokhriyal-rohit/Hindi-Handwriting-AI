@@ -16,7 +16,10 @@ class Registry:
         "pressure_models": {},
         "ink_models": {},
         "exporters": {},
-        "metrics": {}
+        "ink_models": {},
+        "exporters": {},
+        "metrics": {},
+        "postprocessors": {}
     }
 
     @classmethod
@@ -126,3 +129,14 @@ class Registry:
     @classmethod
     def get_metric(cls, name: str) -> Optional[Type]:
         return cls.get("metrics", name)
+
+    @classmethod
+    def register_postprocessor(cls, name: str):
+        def decorator(processor_cls: Type):
+            cls._registry["postprocessors"][name] = processor_cls
+            return processor_cls
+        return decorator
+
+    @classmethod
+    def get_postprocessor(cls, name: str) -> Optional[Type]:
+        return cls.get("postprocessors", name)

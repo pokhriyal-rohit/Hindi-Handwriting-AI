@@ -88,7 +88,8 @@ class InferencePipeline:
         trajectory = self._reconstruct_coordinates(raw_outputs, clean_text)
         
         # 5. Post Processing
-        # (Will be added in Subsystem 4)
+        for processor in self.session.postprocessors:
+            trajectory = processor.process(trajectory)
         
         # 6. Layout & Rendering (We skip file saving for pure pipeline dict for now)
         # (Export paths handled later)

@@ -37,6 +37,17 @@ class InferenceSession:
         # You can override config properties based on InferenceConfig here if needed
         self.renderer = RenderingEngine(render_cfg)
         
+        # Load postprocessors
+        self.postprocessors = []
+        # Ensure validation is imported so registration runs
+        import src.inference.postprocessing.validation
+        for pp_name in self.config.postprocessors:
+            pp_cls = Registry.get_postprocessor(pp_name)
+            if pp_cls:
+                self.postprocessors.append(pp_cls(self.config))
+            else:
+                logger.warning(f"Postprocessor '{pp_name}' not found.")
+        
         logger.info("InferenceSession initialized successfully.")
         
     def warmup(self):

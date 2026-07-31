@@ -23,5 +23,8 @@ class InferenceConfig(BaseModel):
     # Export formats
     export_formats: list[str] = Field(default_factory=lambda: ["svg"], description="Formats to automatically generate (svg, png)")
     
+    # Post Processing
+    postprocessors: list[str] = Field(default_factory=lambda: ["coordinate_clamp", "metadata_enricher"], description="Ordered list of post-processing plugins")
+    
     # Caching
     enable_cache: bool = Field(default=True, description="Whether to use the Inference Cache system")

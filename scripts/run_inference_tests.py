@@ -19,6 +19,10 @@ def run_inference_tests():
         test_inference_pipeline()
         print("[PASS] Inference Pipeline execution test passed")
         
+        from tests.test_inference_postprocessing import test_inference_postprocessing
+        test_inference_postprocessing()
+        print("[PASS] Post Processing test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
