@@ -11,6 +11,10 @@ def run_inference_tests():
         test_session_initialization()
         print("[PASS] InferenceSession initialized successfully")
         
+        from tests.test_inference_predictor import test_dummy_predictor
+        test_dummy_predictor()
+        print("[PASS] Predictor contract test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")

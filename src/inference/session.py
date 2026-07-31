@@ -23,8 +23,14 @@ class InferenceSession:
         """Loads and initializes all required systems into memory."""
         logger.info(f"Initializing InferenceSession on device: {self.config.device} ({self.config.precision})")
         
-        # In a real environment, load PyTorch/ONNX models here.
-        # self.predictor = Registry.get_model(self.config.model_name)(self.config)
+        # Load predictor from Registry
+        from src.registry import Registry
+        model_cls = Registry.get_model(self.config.model_name)
+        if model_cls:
+            self.predictor = model_cls(self.config)
+            self.predictor.load_model()
+        else:
+            logger.warning(f"Predictor '{self.config.model_name}' not found in registry.")
         
         # Load rendering pipeline
         render_cfg = RenderingConfig()

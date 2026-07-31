@@ -41,6 +41,10 @@ class Registry:
             cls._registry["models"][name] = wrapped_class
             return wrapped_class
         return wrapper
+
+    @classmethod
+    def get_model(cls, name: str) -> Optional[Type]:
+        return cls.get("models", name)
         
     @classmethod
     def register_dataset(cls, name: str) -> Callable:
