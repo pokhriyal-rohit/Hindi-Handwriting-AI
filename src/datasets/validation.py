@@ -2,7 +2,7 @@
 src/datasets/validation.py
 ==========================
 Core dataset validation logic, importable by both the CLI script
-(scripts/validate_dataset.py) and the training pipeline (src/training/train.py).
+(scripts/validate_dataset.py) and the training pipeline (src/datasets/online_dataset.py).
 
 The script enforces a data quality contract before any sample reaches a model.
 Nine checks are applied per sample; a sample must pass all nine to be valid.
