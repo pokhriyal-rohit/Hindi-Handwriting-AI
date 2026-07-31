@@ -40,6 +40,10 @@ def run_inference_tests():
         test_inference_metadata()
         print("[PASS] End-to-End Runtime Metadata test passed")
         
+        from tests.integration.test_e2e_scenarios import run_integration_scenarios
+        run_integration_scenarios()
+        print("[PASS] Integration Scenarios passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         import traceback
