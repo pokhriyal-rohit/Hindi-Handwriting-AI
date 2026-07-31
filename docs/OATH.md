@@ -22,3 +22,39 @@
 > Let every conclusion be earned.
 >
 > **The data has the final vote.**
+
+---
+
+# To the Next Researcher
+
+You are standing on a stable foundation.
+
+Do not mistake that foundation for the destination.
+
+The renderer is not the contribution.
+
+The LSTM is not the contribution.
+
+The plugin system is not the contribution.
+
+Those are instruments.
+
+The contribution is the process that lets you ask increasingly better questions and answer them with evidence.
+
+If you think an architecture is better—
+
+prove it.
+
+If you think a dataset is cleaner—
+
+measure it.
+
+If you think a metric correlates with human perception—
+
+validate it.
+
+The repository will not protect you from incorrect hypotheses.
+
+It will only protect you from reaching conclusions without evidence.
+
+Use that protection well.
