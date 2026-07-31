@@ -30,3 +30,7 @@
   - Expanded `@Registry.register_metric` dynamic plugin system.
   - Implemented `EvaluationConfig` to freeze benchmark state and metadata (git commit, metric versions).
   - Generated initial `docs/METRIC_REFERENCE.md` catalog.
+- **Subsystem 2: Trajectory Metrics**
+  - Created `src/evaluation/metrics/trajectory.py`.
+  - Implemented geometric trajectory metrics: `DTWMetric`, `FrechetMetric`, `StrokeCountDifferenceMetric`, and `EndpointErrorMetric`.
+  - Used `fastdtw` and `similaritymeasures` wrapped in safe import checks for robust, optimized time-series evaluation.

@@ -12,4 +12,26 @@ All metrics implement `BaseMetric` providing:
 - `summarize(results)`: Aggregation of statistical arrays into Means and Confidence Intervals.
 
 ## Implemented Metrics
-*(More metrics will be added here as Subsystem 2 and Subsystem 3 are implemented).*
+
+### Trajectory Metrics (`src/evaluation/metrics/trajectory.py`)
+
+#### DTWMetric (`dtw`)
+- **Purpose**: Evaluates sequential timing and geometric similarity irrespective of sampling speed.
+- **Inputs**: Prediction `TrajectorySample`, Target `TrajectorySample`
+- **Outputs**: `dtw_distance`
+- **Computational Complexity**: O(N^2) (Reduced to O(N) via FastDTW).
+
+#### FrechetMetric (`frechet`)
+- **Purpose**: Evaluates spatial shape similarity (Discrete Fréchet distance) akin to the "dog-walker distance".
+- **Inputs**: Prediction `TrajectorySample`, Target `TrajectorySample`
+- **Outputs**: `frechet_distance`
+- **Computational Complexity**: O(N^2)
+
+#### StrokeCountDifferenceMetric (`stroke_count`)
+- **Purpose**: Verifies that the model generated the exact expected number of strokes.
+- **Outputs**: `pred_strokes`, `target_strokes`, `stroke_difference`
+
+#### EndpointErrorMetric (`endpoint_error`)
+- **Purpose**: Verifies the final Euclidean stopping position of the generated handwriting matches the target.
+- **Outputs**: `endpoint_error`
+
