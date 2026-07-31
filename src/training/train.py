@@ -10,6 +10,7 @@ from src.training.experiment import ExperimentTracker
 from src.training.utils import tensor_to_trajectory
 from src.renderer.pipeline import RenderingEngine
 from src.renderer.config import RenderingConfig
+from src.datasets.validation import pre_training_gate, DatasetValidationError
 
 def compute_grad_norm(model: torch.nn.Module) -> float:
     total_norm = 0.0
@@ -19,11 +20,79 @@ def compute_grad_norm(model: torch.nn.Module) -> float:
             total_norm += param_norm.item() ** 2
     return total_norm ** 0.5
 
-def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = None, val_split: float = 0.1, batch_size: int = 32):
+
+def _compute_val_geometry(model, val_loader, max_samples: int) -> dict:
+    """
+    Runs DTW and EndpointError on up to `max_samples` validation predictions.
+    Returns an empty dict if fastdtw/scipy are not installed.
+    The model must already be in eval() mode before calling this.
+    """
+    try:
+        from fastdtw import fastdtw
+        from scipy.spatial.distance import euclidean
+        import numpy as np
+    except ImportError:
+        return {}  # Metrics silently skipped if optional deps absent
+
+    from src.evaluation.metrics.trajectory import DTWMetric, EndpointErrorMetric
+    dtw_metric = DTWMetric()
+    ee_metric  = EndpointErrorMetric()
+
+    dtw_scores: list = []
+    ee_scores:  list = []
+    n_evaluated = 0
+
+    with torch.no_grad():
+        for tokens, t_lens, coords, c_lens in val_loader:
+            if n_evaluated >= max_samples:
+                break
+            preds = model(tokens, target_len=coords.size(1))
+            batch_size = tokens.size(0)
+            for i in range(batch_size):
+                if n_evaluated >= max_samples:
+                    break
+                length = c_lens[i].item()
+                pred_traj   = tensor_to_trajectory(preds[i, :length])
+                target_traj = tensor_to_trajectory(coords[i, :length])
+                try:
+                    dtw_res = dtw_metric.evaluate(pred_traj, target_traj)
+                    ee_res  = ee_metric.evaluate(pred_traj, target_traj)
+                    if dtw_res.get("dtw_distance") != float("inf"):
+                        dtw_scores.append(dtw_res["dtw_distance"])
+                    if ee_res.get("endpoint_error") != float("inf"):
+                        ee_scores.append(ee_res["endpoint_error"])
+                except Exception:
+                    pass  # Don't let a metric failure abort training
+                n_evaluated += 1
+
+    result = {}
+    if dtw_scores:
+        result["dtw_mean"]   = float(sum(dtw_scores) / len(dtw_scores))
+        result["dtw_median"] = float(sorted(dtw_scores)[len(dtw_scores) // 2])
+        result["dtw_n"]      = len(dtw_scores)
+    if ee_scores:
+        result["endpoint_error_mean"] = float(sum(ee_scores) / len(ee_scores))
+        result["endpoint_error_n"]    = len(ee_scores)
+    return result
+
+def train_model(
+    epochs: int = 100,
+    exp_id: str = None,
+    resume_checkpoint: str = None,
+    val_split: float = 0.1,
+    batch_size: int = 32,
+    force_train: bool = False,
+    eval_every: int = 10,
+    max_eval_samples: int = 20,
+):
     tracker = ExperimentTracker(exp_id=exp_id)
 
     import os
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "custom_hindi"))
+
+    # ── Pre-training validation gate ──────────────────────────────────────────
+    pre_training_gate(data_dir, force=force_train)
+
     full_dataset = CustomTrajectoryDataset(data_dir=data_dir)
 
     # --- Validation split ---
@@ -60,6 +129,8 @@ def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = 
         "n_train": n_train,
         "n_val": n_val,
         "val_seed": 42,
+        "eval_every": eval_every,
+        "max_eval_samples": max_eval_samples,
         "vocab_size": 5000,
         "lr": 1e-3,
         "model": "BaselineLSTM"
@@ -92,7 +163,7 @@ def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = 
         epoch_time = time.time() - t0
         avg_loss = total_loss / len(dataloader)
 
-        # --- Validation pass ---
+        # ── Validation pass (loss) ────────────────────────────────────────────
         model.eval()
         val_loss_total = 0.0
         with torch.no_grad():
@@ -101,15 +172,37 @@ def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = 
                 val_loss_total += loss_fn(preds, coords, c_lens).item()
         avg_val_loss = val_loss_total / len(val_loader)
 
-        print(f"Epoch {epoch:03d} | Train Loss: {avg_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Grad: {grad_norm:.2f} | Time: {epoch_time:.2f}s")
+        # ── Per-epoch geometry metrics on val set ─────────────────────────────
+        geo_metrics: dict = {}
+        if epoch % eval_every == 0 or epoch == epochs:
+            geo_metrics = _compute_val_geometry(
+                model, val_loader, max_eval_samples
+            )
 
-        tracker.log_epoch(epoch, {
-            "loss": avg_loss,
-            "val_loss": avg_val_loss,
+        # ── Logging ───────────────────────────────────────────────────────────
+        geo_str = ""
+        if geo_metrics:
+            dtw = geo_metrics.get("dtw_mean")
+            ee  = geo_metrics.get("endpoint_error_mean")
+            geo_str = f" | DTW: {dtw:.1f}" if dtw is not None else ""
+            geo_str += f" | EE: {ee:.1f}" if ee is not None else ""
+
+        print(
+            f"Epoch {epoch:03d} | "
+            f"Train: {avg_loss:.4f} | Val: {avg_val_loss:.4f} | "
+            f"Grad: {grad_norm:.2f}{geo_str} | {epoch_time:.2f}s"
+        )
+
+        epoch_log = {
+            "loss":      avg_loss,
+            "val_loss":  avg_val_loss,
             "grad_norm": grad_norm,
-            "lr": optimizer.param_groups[0]['lr'],
-            "time_sec": epoch_time
-        })
+            "lr":        optimizer.param_groups[0]["lr"],
+            "time_sec":  epoch_time,
+        }
+        if geo_metrics:
+            epoch_log.update(geo_metrics)
+        tracker.log_epoch(epoch, epoch_log)
         
         # Save checkpoint periodically and generate SVGs
         if epoch % 10 == 0 or epoch == epochs:

@@ -22,7 +22,7 @@ def tensor_to_trajectory(coords: torch.Tensor, text: str = "") -> TrajectorySamp
         x += dx
         y += dy
         
-        current_points.append(Point(x=x, y=y, time=float(i), pen_state=1.0 if is_pen_down else 0.0))
+        current_points.append(Point(x=x, y=y, timestamp=float(i), pen_state=1 if is_pen_down else 0))
         
         if not is_pen_down and len(current_points) > 0:
             strokes.append(Stroke(points=current_points))
@@ -37,6 +37,11 @@ def tensor_to_trajectory(coords: torch.Tensor, text: str = "") -> TrajectorySamp
         script="devanagari",
         language="hi",
         text=text,
-        metadata=DatasetMetadata(dataset_name="synthetic", dataset_version="1.0.0", resolution=1000, hz=100),
+        metadata=DatasetMetadata(
+            dataset_name="synthetic",
+            dataset_version="1.0.0",
+            is_synthetic=True,
+            sampling_rate_hz=100.0
+        ),
         strokes=strokes
     )
