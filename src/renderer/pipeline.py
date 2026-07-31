@@ -100,9 +100,15 @@ class RenderingEngine:
                 
             try:
                 exporter = exporter_cls(self.config)
+                exporter.initialize()
                 exporter.export(working_sample, output_path)
+                if not exporter.validate(output_path):
+                    raise ExporterError(f"Validation failed for '{format}' exporter at '{output_path}'.")
             except Exception as e:
                 raise ExporterError(f"Exporter '{format}' failed during execution: {e}")
+            finally:
+                if 'exporter' in locals() and hasattr(exporter, 'cleanup'):
+                    exporter.cleanup()
                 
         except RendererError:
             raise

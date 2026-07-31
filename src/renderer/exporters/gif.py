@@ -2,18 +2,12 @@ from typing import List
 from src.registry import Registry
 from src.datasets.structures import TrajectorySample
 from src.renderer.config import RenderingConfig
+from src.renderer.exporters.base import BaseExporter
 
 try:
     from PIL import Image, ImageDraw
 except ImportError:
     Image, ImageDraw = None, None
-
-class BaseExporter:
-    def __init__(self, config: RenderingConfig):
-        self.config = config
-        
-    def export(self, geom: TrajectorySample, output_path: str) -> None:
-        raise NotImplementedError
 
 @Registry.register_exporter("gif")
 class GIFExporter(BaseExporter):

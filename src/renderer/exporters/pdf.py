@@ -4,7 +4,8 @@ from src.registry import Registry
 from src.datasets.structures import TrajectorySample
 from src.renderer.config import RenderingConfig
 from src.renderer.exceptions import ExporterError
-from src.renderer.exporters.svg import SVGExporter, BaseExporter
+from src.renderer.exporters.base import BaseExporter
+from src.renderer.exporters.svg import SVGExporter
 
 try:
     import cairosvg
