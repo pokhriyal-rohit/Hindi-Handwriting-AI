@@ -82,6 +82,23 @@ def analyze_dataset():
             print(f"... and {len(issues) - 10} more issues.")
     else:
         print("None detected.")
+        
+    # Generate dataset_manifest.yaml
+    manifest = {
+        "dataset_name": "Custom Hindi Online",
+        "version": "1.0.0",
+        "writers": writers,
+        "samples": total_samples,
+        "unique_prompts": len(words_collected),
+        "collector_version": "1.1",
+        "schema_version": 1,
+        "last_updated": __import__('datetime').datetime.utcnow().isoformat() + "Z"
+    }
+    import yaml
+    manifest_path = os.path.join(DATA_DIR, "dataset_manifest.yaml")
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        yaml.dump(manifest, f, sort_keys=False, allow_unicode=True)
+    print(f"\nManifest saved to {manifest_path}")
 
 if __name__ == "__main__":
     analyze_dataset()
