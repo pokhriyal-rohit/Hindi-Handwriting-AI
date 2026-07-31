@@ -52,6 +52,10 @@ def run_evaluation_tests():
         test_visualization()
         print("[PASS] Visualization gracefully tested")
         
+        from tests.test_evaluation_orchestrator import test_benchmark_orchestrator
+        test_benchmark_orchestrator()
+        print("[PASS] Benchmark Orchestrator batch execution test passed")
+        
         print("\nAll evaluation tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
