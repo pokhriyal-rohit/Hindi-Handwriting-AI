@@ -1,13 +1,13 @@
 import numpy as np
 from pathlib import Path
 from typing import List
-from .structures import Point, Stroke, Trajectory
+from .structures import Point, Stroke, TrajectorySample, DatasetMetadata
 
 class IIITHWParser:
     """Parses raw IIIT-HW-Devanagari dataset files into Trajectory objects."""
     
     @staticmethod
-    def parse_txt_file(filepath: str | Path, text_label: str = "", writer_id: str = "") -> Trajectory:
+    def parse_txt_file(filepath: str | Path, text_label: str = "", writer_id: str = "") -> TrajectorySample:
         """
         Parses a standard text file containing coordinates.
         Assuming format: x, y, pen_state (or similar).
@@ -49,15 +49,31 @@ class IIITHWParser:
         if current_stroke_points:
             strokes.append(Stroke(points=current_stroke_points))
             
-        return Trajectory(strokes=strokes, text=text_label, writer_id=writer_id)
+        metadata = DatasetMetadata(
+            dataset_name="IIIT-HW-Hindi_v1",
+            dataset_version="1.0",
+            is_synthetic=False
+        )
+        return TrajectorySample(
+            sample_id=Path(path).stem,
+            writer_id=writer_id,
+            script="devanagari",
+            language="hi",
+            text=text_label,
+            strokes=strokes,
+            metadata=metadata
+        )
 
     @staticmethod
-    def normalize_trajectory(traj: Trajectory) -> Trajectory:
+    def normalize_trajectory(traj: TrajectorySample) -> TrajectorySample:
         """
         Normalizes the trajectory coordinates to have zero mean and unit variance,
         or translates it so the top-left is at (0,0).
         """
-        all_pts = traj.to_array()
+        all_pts = []
+        for stroke in traj.strokes:
+            all_pts.extend(stroke.points)
+        
         if not all_pts:
             return traj
             

@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from .structures import Point, Stroke, Trajectory
+from .structures import Point, Stroke, TrajectorySample
 
 class CoordinateTokenizer:
     """
@@ -33,7 +33,7 @@ class CoordinateTokenizer:
         normalized = bin_idx / float(self.grid_size - 1)
         return min_val + normalized * (max_val - min_val)
 
-    def tokenize_trajectory(self, traj: Trajectory) -> List[int]:
+    def tokenize_trajectory(self, traj: TrajectorySample) -> List[int]:
         """
         Converts a Trajectory to a 1D sequence of tokens.
         Format: [X1, Y1, X2, Y2, PEN_LIFT, X3, Y3, ..., EOS]
@@ -55,7 +55,7 @@ class CoordinateTokenizer:
                 
                 # If it's the last point of a stroke (p=0), add pen lift token
                 # In our normalized structure, p=0 means lift.
-                if pt.p == 0:
+                if pt.pen_state == 0:
                     tokens.append(self.pen_lift_token)
                     
         tokens.append(self.eos_token)
