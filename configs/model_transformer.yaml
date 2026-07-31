@@ -1,0 +1,8 @@
+model:
+  type: tiny_transformer
+  params:
+    input_dim: 3
+    hidden_dim: 256
+    num_layers: 3
+    num_heads: 4
+    num_mixtures: 20

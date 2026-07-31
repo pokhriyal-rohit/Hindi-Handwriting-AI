@@ -16,10 +16,10 @@ pip install -r requirements.txt
 ```
 
 ## Documentation
-- [Colab Setup Guide](COLAB_SETUP.md)
+- [Kaggle Setup Guide](Kaggle_SETUP.md)
 - [Project Technical Reference](PROJECT_TECHNICAL_REFERENCE.md)
 - [Training Strategy](TRAINING_STRATEGY.md)
 - [Style Dataset Analysis](STYLE_DATASET_ANALYSIS.md)
-- [Colab Release Report](COLAB_RELEASE_REPORT.md)
+- [Kaggle Release Report](Kaggle_RELEASE_REPORT.md)
 - `python main.py train-ocr`: Train the OCR module
 - `python main.py recognize --image ... --exp_dir ...`: Run inference on a handwritten image

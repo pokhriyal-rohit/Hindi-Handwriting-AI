@@ -1,0 +1,242 @@
+[
+  {
+    "character": "छ",
+    "mean_dtw": 2648.8214507330986,
+    "std_dtw": 4.547473508864641e-13,
+    "samples": 10
+  },
+  {
+    "character": "ठ",
+    "mean_dtw": 2582.6048894490377,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "घ",
+    "mean_dtw": 2451.817295596077,
+    "std_dtw": 4.547473508864641e-13,
+    "samples": 10
+  },
+  {
+    "character": "ब",
+    "mean_dtw": 2430.597155571445,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "झ",
+    "mean_dtw": 2421.687909835236,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "ड",
+    "mean_dtw": 2416.893696979242,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "ट",
+    "mean_dtw": 2403.22689311911,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "ख",
+    "mean_dtw": 2384.3729716950793,
+    "std_dtw": 4.547473508864641e-13,
+    "samples": 10
+  },
+  {
+    "character": "च",
+    "mean_dtw": 2377.430104077255,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "ग",
+    "mean_dtw": 2361.436746485292,
+    "std_dtw": 4.547473508864641e-13,
+    "samples": 10
+  },
+  {
+    "character": "ढ",
+    "mean_dtw": 2300.7742123605194,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "फ",
+    "mean_dtw": 2251.518020741543,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "ष",
+    "mean_dtw": 2180.2206497161633,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "थ",
+    "mean_dtw": 2122.121014875036,
+    "std_dtw": 315.5845738836425,
+    "samples": 20
+  },
+  {
+    "character": "ज",
+    "mean_dtw": 2115.2726495480933,
+    "std_dtw": 330.8236202670642,
+    "samples": 30
+  },
+  {
+    "character": "ध",
+    "mean_dtw": 2103.9543879558732,
+    "std_dtw": 187.2384561130387,
+    "samples": 40
+  },
+  {
+    "character": "भ",
+    "mean_dtw": 2063.9022280413665,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "न",
+    "mean_dtw": 2025.032192818423,
+    "std_dtw": 201.00616976230253,
+    "samples": 70
+  },
+  {
+    "character": "ी",
+    "mean_dtw": 2006.1450915976109,
+    "std_dtw": 141.2121940699294,
+    "samples": 30
+  },
+  {
+    "character": "त",
+    "mean_dtw": 1997.1273343238242,
+    "std_dtw": 187.73782551622358,
+    "samples": 90
+  },
+  {
+    "character": "क",
+    "mean_dtw": 1978.67772333974,
+    "std_dtw": 235.02081385287875,
+    "samples": 60
+  },
+  {
+    "character": "द",
+    "mean_dtw": 1978.0033328269021,
+    "std_dtw": 204.96284822810338,
+    "samples": 50
+  },
+  {
+    "character": "प",
+    "mean_dtw": 1969.4056980407036,
+    "std_dtw": 172.77856090165656,
+    "samples": 60
+  },
+  {
+    "character": "र",
+    "mean_dtw": 1956.3640816007123,
+    "std_dtw": 110.89452234956256,
+    "samples": 80
+  },
+  {
+    "character": "े",
+    "mean_dtw": 1939.602077565026,
+    "std_dtw": 69.41771046590407,
+    "samples": 20
+  },
+  {
+    "character": "व",
+    "mean_dtw": 1934.7851925336197,
+    "std_dtw": 151.34207215190352,
+    "samples": 50
+  },
+  {
+    "character": "श",
+    "mean_dtw": 1915.0030160073015,
+    "std_dtw": 47.92889361774451,
+    "samples": 20
+  },
+  {
+    "character": "म",
+    "mean_dtw": 1910.7237345587957,
+    "std_dtw": 100.11395482367261,
+    "samples": 50
+  },
+  {
+    "character": "्",
+    "mean_dtw": 1902.340167907086,
+    "std_dtw": 114.3452426800239,
+    "samples": 160
+  },
+  {
+    "character": "ञ",
+    "mean_dtw": 1882.643040041155,
+    "std_dtw": 42.62388921553702,
+    "samples": 20
+  },
+  {
+    "character": "ा",
+    "mean_dtw": 1880.5829373546242,
+    "std_dtw": 78.6135392536311,
+    "samples": 100
+  },
+  {
+    "character": "अ",
+    "mean_dtw": 1872.527514384073,
+    "std_dtw": 2.2737367544323206e-13,
+    "samples": 10
+  },
+  {
+    "character": "य",
+    "mean_dtw": 1872.0257332684191,
+    "std_dtw": 87.31127054443186,
+    "samples": 60
+  },
+  {
+    "character": "ं",
+    "mean_dtw": 1859.4653118065876,
+    "std_dtw": 103.46659781845788,
+    "samples": 20
+  },
+  {
+    "character": "ि",
+    "mean_dtw": 1843.6596201660059,
+    "std_dtw": 68.38926949849163,
+    "samples": 50
+  },
+  {
+    "character": "स",
+    "mean_dtw": 1836.3746196167408,
+    "std_dtw": 97.1728230151355,
+    "samples": 70
+  },
+  {
+    "character": "आ",
+    "mean_dtw": 1824.0009516819987,
+    "std_dtw": 0.0,
+    "samples": 10
+  },
+  {
+    "character": "ल",
+    "mean_dtw": 1821.7850631752503,
+    "std_dtw": 31.026822224592934,
+    "samples": 20
+  },
+  {
+    "character": "ु",
+    "mean_dtw": 1795.8655790375499,
+    "std_dtw": 5.1073380868929235,
+    "samples": 20
+  },
+  {
+    "character": "ृ",
+    "mean_dtw": 1755.99871398813,
+    "std_dtw": 0.0,
+    "samples": 10
+  }
+]

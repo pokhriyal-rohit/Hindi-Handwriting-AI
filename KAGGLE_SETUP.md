@@ -1,9 +1,9 @@
-# Google Colab Setup Guide
+# Google Kaggle Setup Guide
 
-This guide ensures a seamless, reproducible deployment of the Hindi Handwriting AI Platform to Google Colab environments.
+This guide ensures a seamless, reproducible deployment of the Hindi Handwriting AI Platform to Google Kaggle environments.
 
 ## 1. Environment Initialization
-Open a new Google Colab notebook with a GPU runtime (T4 or A100).
+Open a new Google Kaggle notebook with a GPU runtime (T4 or A100).
 Run the following commands to clone and install:
 
 ```bash
@@ -11,13 +11,13 @@ Run the following commands to clone and install:
 !git clone https://github.com/YOUR_USERNAME/Hindi-Handwriting-AI.git
 %cd Hindi-Handwriting-AI
 
-# Install specific Colab requirements
-!pip install -r requirements_colab.txt
+# Install specific Kaggle requirements
+!pip install -r requirements_Kaggle.txt
 !pip install torchvision>=0.15.0
 ```
 
 ## 2. Dataset Upload
-Upload your zipped `canonical` dataset directly to the Colab environment.
+Upload your zipped `canonical` dataset directly to the Kaggle environment.
 
 ```bash
 # Assuming you uploaded canonical.zip to /content/
@@ -61,16 +61,16 @@ Run inference on a single handwritten image:
 ```
 
 ## 5. Resuming Training
-To resume training from a checkpoint (to protect against Colab disconnects):
+To resume training from a checkpoint (to protect against Kaggle disconnects):
 *(Ensure you modify `train_ocr.py` or pass resume args if implemented in CLI)*
 Checkpoints are automatically saved in your experiment directory (e.g., `experiments/OCR/.../latest.pt`).
 
 ## 6. Troubleshooting
-- **No Module Named Torchvision:** Ensure you ran `pip install torchvision>=0.15.0` as Colab occasionally desyncs vision dependencies.
+- **No Module Named Torchvision:** Ensure you ran `pip install torchvision>=0.15.0` as Kaggle occasionally desyncs vision dependencies.
 - **Out of Memory (OOM):** Modify `configs/ocr.yaml` or `configs/training.yaml` to reduce `batch_size` from 64 to 32 or 16.
 - **Drive Backup:** Mount your Google Drive and symlink the `experiments/` folder to prevent data loss when the instance shuts down.
   ```python
-  from google.colab import drive
+  from google.Kaggle import drive
   drive.mount('/content/drive')
   !ln -s /content/drive/MyDrive/Hindi_AI_Experiments experiments
   ```

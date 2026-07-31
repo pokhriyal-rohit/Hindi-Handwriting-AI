@@ -216,28 +216,26 @@ def train_model(
             epoch_log.update(geo_metrics)
         tracker.log_epoch(epoch, epoch_log)
         
-            # Checkpoints logic (latest, best_loss, etc.)
-            ckpt_data = {
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': avg_loss
-            }
-            
-            # Save latest
-            ckpt_dir = os.path.join(tracker.exp_dir, "checkpoints")
-            os.makedirs(ckpt_dir, exist_ok=True)
-            torch.save(ckpt_data, os.path.join(ckpt_dir, "latest.pt"))
-            
-            # (In a real implementation, we would track best_loss, best_dtw over epochs and save accordingly)
-            best_dir = os.path.join(ckpt_dir, "best")
-            os.makedirs(best_dir, exist_ok=True)
-            # Dummy saving best for this epoch (just to satisfy structure)
-            torch.save(ckpt_data, os.path.join(best_dir, "loss.pt"))
-            if geo_metrics:
-                torch.save(ckpt_data, os.path.join(best_dir, "dtw.pt"))
-                torch.save(ckpt_data, os.path.join(best_dir, "endpoint.pt"))
-                
+        # Checkpoints logic (latest, best_loss, etc.)
+        ckpt_data = {
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': avg_loss
+        }
+        
+        # Save latest
+        ckpt_dir = os.path.join(tracker.exp_dir, "checkpoints")
+        os.makedirs(ckpt_dir, exist_ok=True)
+        torch.save(ckpt_data, os.path.join(ckpt_dir, "latest.pt"))
+        # (In a real implementation, we would track best_loss, best_dtw over epochs and save accordingly)
+        best_dir = os.path.join(ckpt_dir, "best")
+        os.makedirs(best_dir, exist_ok=True)
+        # Dummy saving best for this epoch (just to satisfy structure)
+        torch.save(ckpt_data, os.path.join(best_dir, "loss.pt"))
+        if geo_metrics:
+            torch.save(ckpt_data, os.path.join(best_dir, "dtw.pt"))
+            torch.save(ckpt_data, os.path.join(best_dir, "endpoint.pt"))
         # Generate qualitative outputs only at the end of training to avoid overhead
         if epoch == epochs:
             print("Generating final qualitative previews...")

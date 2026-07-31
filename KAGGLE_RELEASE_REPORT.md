@@ -1,7 +1,7 @@
-# Hindi Handwriting AI - Colab Release Report
+# Hindi Handwriting AI - Kaggle Release Report
 
 ## 1. Repository Status
-The repository is fully synchronized and structurally locked for Colab deployment. All temporary scripts, generated caches, and debug files have been expunged from the root directory.
+The repository is fully synchronized and structurally locked for Kaggle deployment. All temporary scripts, generated caches, and debug files have been expunged from the root directory.
 
 ## 2. Engineering Completion
 - ✅ **Offline OCR Pipeline:** Complete. `train-ocr` runs flawlessly on CPU/GPU.
@@ -33,10 +33,10 @@ The data architecture is split precisely by purpose and domain to ensure reprodu
 - **OCR Dataset (Offline, Phase 2):** Massive repository (95k images across 12 distinct writers from IIIT-HW-Hindi_v1). Used strictly for image-to-text sequence modeling.
 - **Synthetic Dataset (Offline):** Placeholder for future data augmentation mapping.
 
-## 6. Colab Readiness Checklist
-- `[x]` `requirements_colab.txt` provided for runtime setup.
+## 6. Kaggle Readiness Checklist
+- `[x]` `requirements_Kaggle.txt` provided for runtime setup.
 - `[x]` Absolute paths replaced with relative `os.path` joins.
-- `[x]` `COLAB_SETUP.md` documentation complete.
+- `[x]` `Kaggle_SETUP.md` documentation complete.
 - `[x]` PyTorch data loaders optimized for cloud GPU environments.
 - `[x]` Checkpoints save continuously to `experiments/` to prevent instance loss.
 
@@ -51,12 +51,12 @@ The data architecture is split precisely by purpose and domain to ensure reprodu
 - **Phase 3 (Style Encoding):** Implement contrastive clustering using the newly collected data.
 - **Phase 4 (Stroke Recovery):** Reverse mapping images back to sequential trajectory states.
 
-## 9. Exact Commands to Begin Training (Colab)
+## 9. Exact Commands to Begin Training (Kaggle)
 ```bash
 # 1. Setup Environment
 git clone https://github.com/pokhriyal-rohit/Hindi-Handwriting-AI.git
 cd Hindi-Handwriting-AI
-pip install -r requirements_colab.txt
+pip install -r requirements_Kaggle.txt
 
 # 2. Stage A: Trajectory Pretraining
 python main.py train

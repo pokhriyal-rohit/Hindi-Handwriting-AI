@@ -1,0 +1,30 @@
+[
+  {
+    "fraction": 0.25,
+    "samples": 102,
+    "epochs": 3,
+    "mean_dtw": Infinity,
+    "train_time_sec": 15.25841736793518
+  },
+  {
+    "fraction": 0.5,
+    "samples": 205,
+    "epochs": 3,
+    "mean_dtw": Infinity,
+    "train_time_sec": 26.171252250671387
+  },
+  {
+    "fraction": 0.75,
+    "samples": 307,
+    "epochs": 3,
+    "mean_dtw": Infinity,
+    "train_time_sec": 45.434173345565796
+  },
+  {
+    "fraction": 1.0,
+    "samples": 410,
+    "epochs": 3,
+    "mean_dtw": Infinity,
+    "train_time_sec": 59.44576144218445
+  }
+]

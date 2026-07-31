@@ -7,7 +7,7 @@ def build_release():
     release_dir = "releases"
     os.makedirs(release_dir, exist_ok=True)
     
-    zip_name = "v1.1.0-colab-ready.zip"
+    zip_name = "v1.1.0-kaggle-ready.zip"
     zip_path = os.path.join(release_dir, zip_name)
     
     if os.path.exists(zip_path):
@@ -23,14 +23,14 @@ def build_release():
         "data/canonical",
         "main.py",
         "requirements.txt",
-        "requirements_colab.txt",
-        "Colab_Training.ipynb",
+        "requirements_kaggle.txt",
+        "Kaggle_Training.ipynb",
         "VERSION",
         "CHANGELOG.md",
         "LICENSE",
         "README.md",
         "ARCHIVED_DATASETS.md",
-        "COLAB_SETUP.md"
+        "KAGGLE_SETUP.md"
     ]
     
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:

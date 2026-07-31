@@ -100,7 +100,7 @@ def cmd_resume(args):
         print("ERROR: --exp_id is required for resume.")
         sys.exit(1)
         
-    ckpt_path = os.path.join("runs", exp_id, "checkpoints", "latest.pt")
+    ckpt_path = os.path.join("experiments", exp_id, "checkpoints", "latest.pt")
     if not os.path.exists(ckpt_path):
         # Fallback to the old checkpoint format if latest doesn't exist
         print(f"ERROR: No latest.pt found for {exp_id} at {ckpt_path}.")
