@@ -28,3 +28,6 @@ class InferenceConfig(BaseModel):
     
     # Caching
     enable_cache: bool = Field(default=True, description="Whether to use the Inference Cache system")
+    
+    # Hooks
+    hooks: list[str] = Field(default_factory=lambda: ["logging_hook"], description="Ordered list of lifecycle hook plugins")

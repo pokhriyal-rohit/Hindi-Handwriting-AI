@@ -19,7 +19,8 @@ class Registry:
         "ink_models": {},
         "exporters": {},
         "metrics": {},
-        "postprocessors": {}
+        "postprocessors": {},
+        "hooks": {}
     }
 
     @classmethod
@@ -140,3 +141,14 @@ class Registry:
     @classmethod
     def get_postprocessor(cls, name: str) -> Optional[Type]:
         return cls.get("postprocessors", name)
+
+    @classmethod
+    def register_hook(cls, name: str):
+        def decorator(hook_cls: Type):
+            cls._registry["hooks"][name] = hook_cls
+            return hook_cls
+        return decorator
+
+    @classmethod
+    def get_hook(cls, name: str) -> Optional[Type]:
+        return cls.get("hooks", name)

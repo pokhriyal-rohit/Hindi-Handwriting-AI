@@ -3,6 +3,7 @@ from typing import Dict, Any, List
 import time
 from src.inference.session import InferenceSession
 from src.inference.result import InferenceResult
+from src.inference.hooks import HookContext
 from src.datasets.structures import TrajectorySample, DatasetMetadata, Stroke, Point
 
 logger = logging.getLogger(__name__)
@@ -78,8 +79,12 @@ class InferencePipeline:
         cache_stats = {"trajectory_hit": False}
         t_start = time.perf_counter()
         
+        ctx = HookContext(text)
+        for hook in self.session.hooks: hook.before_inference(ctx)
+        
         # 1. Preprocessing
         clean_text = self._preprocess(text)
+        ctx.normalized_text = clean_text
         
         # --- CACHE CHECK ---
         trajectory = None
@@ -95,29 +100,38 @@ class InferencePipeline:
         else:
             # 2. Tokenization
             tokens = self._tokenize(clean_text)
+            ctx.tokens = tokens
             
             # 3. Model Prediction
             if not self.session.predictor:
                 raise RuntimeError("Pipeline execution failed: Predictor is not loaded in Session.")
             raw_outputs = self.session.predictor.predict(tokens)
+            ctx.metadata["raw_outputs"] = raw_outputs
+            for hook in self.session.hooks: hook.after_prediction(ctx)
             
             # 4. Coordinate Reconstruction
             trajectory = self._reconstruct_coordinates(raw_outputs, clean_text)
             
             # 5. Post Processing
+            for hook in self.session.hooks: hook.before_postprocessing(ctx)
             for processor in self.session.postprocessors:
                 trajectory = processor.process(trajectory)
+            for hook in self.session.hooks: hook.after_postprocessing(ctx)
                 
             # Store in cache
             if self.session.config.enable_cache:
                 self.session.cache.set_trajectory(clean_text, trajectory)
+                
+        ctx.trajectory = trajectory
         
         # 6. Layout & Rendering (We skip file saving for pure pipeline dict for now)
-        # (Export paths handled later)
+        for hook in self.session.hooks: hook.before_rendering(ctx)
+        # render here...
+        for hook in self.session.hooks: hook.after_rendering(ctx)
         
         timings["total_ms"] = (time.perf_counter() - t_start) * 1000.0
         
-        return InferenceResult(
+        res = InferenceResult(
             input_text=text,
             normalized_text=clean_text,
             trajectory=trajectory,
@@ -129,3 +143,7 @@ class InferencePipeline:
                 "raw_outputs": raw_outputs
             }
         )
+        
+        ctx.result = res
+        for hook in self.session.hooks: hook.after_inference(ctx)
+        return res

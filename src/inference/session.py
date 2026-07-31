@@ -49,6 +49,16 @@ class InferenceSession:
                 self.postprocessors.append(pp_cls(self.config))
             else:
                 logger.warning(f"Postprocessor '{pp_name}' not found.")
+                
+        # Load hooks
+        self.hooks = []
+        import src.inference.hooks
+        for hk_name in self.config.hooks:
+            hk_cls = Registry.get_hook(hk_name)
+            if hk_cls:
+                self.hooks.append(hk_cls())
+            else:
+                logger.warning(f"Hook '{hk_name}' not found.")
         
         logger.info("InferenceSession initialized successfully.")
         

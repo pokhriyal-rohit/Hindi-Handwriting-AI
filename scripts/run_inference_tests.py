@@ -31,9 +31,14 @@ def run_inference_tests():
         test_inference_cache()
         print("[PASS] Inference Cache test passed")
         
+        from tests.test_inference_hooks import test_inference_hooks
+        test_inference_hooks()
+        print("[PASS] Inference Hooks test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
-        print(f"[FAIL] Test failed: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
