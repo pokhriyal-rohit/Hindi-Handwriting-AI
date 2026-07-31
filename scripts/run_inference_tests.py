@@ -15,6 +15,10 @@ def run_inference_tests():
         test_dummy_predictor()
         print("[PASS] Predictor contract test passed")
         
+        from tests.test_inference_pipeline import test_inference_pipeline
+        test_inference_pipeline()
+        print("[PASS] Inference Pipeline execution test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
