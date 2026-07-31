@@ -60,6 +60,6 @@ class NotebookLayout(ParagraphLayout):
             for pt in stroke.points:
                 # Snap Y to nearest notebook line (baseline alignment approximation)
                 # We don't fully flatten it, we just align the stroke's vertical offset.
-                pass 
+                pass
                 
         return new_geom

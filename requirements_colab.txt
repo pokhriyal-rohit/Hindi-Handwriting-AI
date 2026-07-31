@@ -1,0 +1,11 @@
+# Colab specific requirements for Google Colab Environment
+# PyTorch is already installed natively in Colab (torch>=2.0.0)
+# torchvision, torchaudio, numpy, matplotlib, scipy, psutil are also pre-installed
+
+# Strict versions required for pipeline execution
+pydantic>=2.4.0
+PyYAML>=6.0
+fastdtw>=0.3.4
+similaritymeasures>=0.4.4
+cairosvg>=2.7.1
+Pillow>=10.0.0

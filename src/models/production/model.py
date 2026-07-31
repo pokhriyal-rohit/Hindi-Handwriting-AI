@@ -57,15 +57,15 @@ class ProductionHandwritingModel(BaseModelInterface, nn.Module):
 
     def train_model(self, dataset: Any, config: Dict[str, Any]) -> None:
         """Handled externally by ProductionTrainer."""
-        pass
+        raise NotImplementedError("Handled externally")
         
     def generate(self, text: str = "", style_id: str = None) -> Any:
         """Autoregressive generation for inference. Will be implemented in Phase 8."""
-        pass
+        raise NotImplementedError("Not implemented yet")
         
     def evaluate(self, dataset: Any) -> Dict[str, float]:
         """Handled externally."""
-        pass
+        raise NotImplementedError("Handled externally")
         
     def save(self, path: str) -> None:
         torch.save(self.state_dict(), path)

@@ -1,0 +1,11 @@
+online:
+  train: "data/canonical/online/train"
+  validation: "data/canonical/online/validation"
+  test: "data/canonical/online/test"
+offline:
+  train: "data/canonical/offline/train"
+  validation: "data/canonical/offline/validation"
+  test: "data/canonical/offline/test"
+max_sequence_length: 500
+input_dim: 3 # [dx, dy, pen_state]
+vocab_size: 100 # Adjust based on tokenizer

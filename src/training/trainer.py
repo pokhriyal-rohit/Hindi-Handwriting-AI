@@ -1,8 +1,6 @@
 import os
-import json
 import torch
 from pathlib import Path
-from typing import Dict, Any, Optional
 from torch.utils.tensorboard import SummaryWriter
 
 from src.config.production import ProductionConfig

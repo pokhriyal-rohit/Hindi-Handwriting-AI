@@ -70,8 +70,12 @@ def build_dataset():
     print("Building canonical dataset...\n")
 
     # 1. Setup Directories
-    for d in ["train", "validation", "test", "manifests", "reports", "archive"]:
+    for d in ["manifests", "reports", "archive"]:
         os.makedirs(os.path.join(CANONICAL_DIR, d), exist_ok=True)
+        
+    for modality in ["online", "offline"]:
+        for split in ["train", "validation", "test"]:
+            os.makedirs(os.path.join(CANONICAL_DIR, modality, split), exist_ok=True)
 
     # 2. Discover and track
     stats = {
@@ -148,7 +152,7 @@ def build_dataset():
                         seen_hashes[h] = raw_filepath
                         
                         # Serialize Canonical
-                        out_dir = os.path.join(CANONICAL_DIR, split, writer_dir_name)
+                        out_dir = os.path.join(CANONICAL_DIR, "online", split, writer_dir_name)
                         os.makedirs(out_dir, exist_ok=True)
                         canonical_filename = f"{word_dir_name}_{sample_file}"
                         out_file = os.path.join(out_dir, canonical_filename)
@@ -257,9 +261,14 @@ The `custom_hindi` dataset was processed through `CustomCollectorConverter` to y
 
 ```
 data/canonical/
-├── train/
-├── validation/
-├── test/
+├── online/
+│   ├── train/
+│   ├── validation/
+│   └── test/
+├── offline/
+│   ├── train/
+│   ├── validation/
+│   └── test/
 ├── manifests/
 └── reports/
 ```

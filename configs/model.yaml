@@ -1,0 +1,6 @@
+architecture: "baseline_lstm"
+hidden_dim: 256
+num_layers: 3
+num_mixtures: 20
+dropout: 0.2
+embedding_dim: 64

@@ -45,13 +45,13 @@ class CoordinateLSTM(BaseModelInterface, nn.Module):
         return (pi, mu1, mu2, sigma1, sigma2, rho, eos), hx_new
 
     def train_model(self, dataset: Any, config: Dict[str, Any]) -> None:
-        pass
+        raise NotImplementedError("Handled externally")
         
     def generate(self, text: str = "", style_id: str = None) -> Any:
-        pass
+        raise NotImplementedError("Handled externally")
         
     def evaluate(self, dataset: Any) -> Dict[str, float]:
-        pass
+        raise NotImplementedError("Handled externally")
         
     def save(self, path: str) -> None:
         torch.save(self.state_dict(), path)

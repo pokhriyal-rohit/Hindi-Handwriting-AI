@@ -1,0 +1,9 @@
+metrics:
+  - "dtw"
+  - "frechet"
+  - "endpoint"
+plot_interval: 10 # Generate plots every N epochs during training
+renderer:
+  smooth_passes: 2
+  canvas_width: 800
+  margin: 50

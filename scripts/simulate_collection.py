@@ -8,7 +8,12 @@ DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data",
 def generate_mock_samples():
     os.makedirs(DATA_DIR, exist_ok=True)
     
-    prompts = ["क", "ख", "ग", "घ", "क्ष"]
+    prompts = [
+        "क", "ख", "ग", "घ", "च", "छ", "ज", "झ", "ट", "ठ", 
+        "ड", "ढ", "त", "थ", "द", "ध", "न", "प", "फ", "ब",
+        "भारत", "नमस्ते", "विद्यालय", "विज्ञान", "शांति", "प्रेम", "सत्य", "पुस्तकालय", "अध्यापक", "विद्यार्थी",
+        "संस्कृति", "धर्म", "ज्ञान", "प्रकाश", "आसमान", "धरती", "समुद्र", "पर्वत", "नदी", "वन"
+    ]
     samples_per_prompt = 10
     
     for prompt in prompts:
@@ -68,7 +73,7 @@ def generate_mock_samples():
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
                 
-    print(f"Generated 50 pilot mock samples in {DATA_DIR}")
+    print(f"Generated {len(prompts) * samples_per_prompt} pilot mock samples in {DATA_DIR}")
 
 if __name__ == "__main__":
     generate_mock_samples()
