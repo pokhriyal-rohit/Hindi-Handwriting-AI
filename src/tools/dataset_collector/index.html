@@ -7,26 +7,46 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background-color: #f4f4f9; margin: 0; padding: 20px; }
         h1 { color: #333; }
-        #word-display { font-size: 3rem; margin: 20px; font-weight: bold; color: #0056b3; }
+        .meta-container { margin-bottom: 20px; padding: 10px; background: white; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .meta-container input, .meta-container select { padding: 5px; margin: 0 10px; font-size: 1rem; }
+        #word-display { font-size: 4rem; margin: 10px; font-weight: bold; color: #0056b3; }
+        #progress-display { font-size: 1.2rem; color: #555; margin-bottom: 10px; }
         canvas { border: 2px solid #333; background-color: #fff; cursor: crosshair; touch-action: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .controls { margin-top: 20px; }
-        button { padding: 10px 20px; font-size: 1.1rem; margin: 0 10px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
+        button { padding: 10px 20px; font-size: 1.1rem; margin: 0 5px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 5px; }
         button:hover { background-color: #0056b3; }
         #clear-btn { background-color: #dc3545; }
         #clear-btn:hover { background-color: #a71d2a; }
-        #status { margin-top: 15px; color: green; font-weight: bold; }
+        #replay-btn { background-color: #28a745; }
+        #replay-btn:hover { background-color: #218838; }
+        #status { margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <h1>Dataset Collector</h1>
-    <p>Please write the following word naturally:</p>
-    <div id="word-display">नमस्ते</div>
+    
+    <div class="meta-container">
+        <label for="writer-id">Writer ID:</label>
+        <input type="text" id="writer-id" value="writer_001">
+        
+        <label for="device">Device:</label>
+        <select id="device">
+            <option value="mouse">Mouse</option>
+            <option value="stylus">Stylus / Tablet</option>
+            <option value="touch">Touchscreen</option>
+        </select>
+    </div>
+
+    <p>Please write the following character/word naturally:</p>
+    <div id="word-display"></div>
+    <div id="progress-display"></div>
     
     <canvas id="drawCanvas" width="800" height="400"></canvas>
     
     <div class="controls">
         <button id="clear-btn" onclick="clearCanvas()">Clear</button>
+        <button id="replay-btn" onclick="replayTrajectory()">Replay</button>
         <button onclick="saveTrajectory()">Save & Next</button>
     </div>
     
@@ -36,21 +56,42 @@
         const canvas = document.getElementById('drawCanvas');
         const ctx = canvas.getContext('2d');
         const wordDisplay = document.getElementById('word-display');
+        const progressDisplay = document.getElementById('progress-display');
         const statusDiv = document.getElementById('status');
+        const writerIdInput = document.getElementById('writer-id');
+        const deviceSelect = document.getElementById('device');
         
-        const words = ["नमस्ते", "दुनिया", "भारत", "अक्षर", "भाषा", "ज्ञान", "विज्ञान", "शांति", "प्रेम", "सत्य"];
-        let currentWordIndex = 0;
+        // Stage A (Chars), Stage B (Ligatures), Stage C (Words), Stage D (Sentences)
+        const prompts = [
+            // Characters
+            "क", "ख", "ग", "घ",
+            // Ligatures
+            "क्ष", "त्र", "ज्ञ",
+            // Words
+            "भारत", "नमस्ते", "विद्यालय",
+            // Sentences
+            "भारत मेरा देश है।"
+        ];
+        
+        const SAMPLES_PER_PROMPT = 5; // Reduced from 20 for testing ease, but can be increased
+        
+        let currentPromptIndex = 0;
+        let currentSampleCount = 1;
         
         let isDrawing = false;
+        let isReplaying = false;
         let trajectory = []; // Array of strokes
         let currentStroke = []; // Array of {x, y, t}
         
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = '#000';
+        function setContextStyle() {
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#000';
+        }
 
         function startPosition(e) {
+            if (isReplaying) return;
             isDrawing = true;
             currentStroke = [];
             draw(e);
@@ -66,14 +107,9 @@
             }
         }
 
-        function draw(e) {
-            if (!isDrawing) return;
-            
-            e.preventDefault();
-            
+        function getMousePos(e) {
             const rect = canvas.getBoundingClientRect();
             let clientX, clientY;
-            
             if (e.touches && e.touches.length > 0) {
                 clientX = e.touches[0].clientX;
                 clientY = e.touches[0].clientY;
@@ -81,17 +117,26 @@
                 clientX = e.clientX;
                 clientY = e.clientY;
             }
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function draw(e) {
+            if (!isDrawing || isReplaying) return;
+            e.preventDefault();
             
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
+            const pos = getMousePos(e);
             const t = Date.now();
             
-            currentStroke.push({x, y, t});
+            currentStroke.push({x: pos.x, y: pos.y, t: t});
             
-            ctx.lineTo(x, y);
+            setContextStyle();
+            ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.moveTo(pos.x, pos.y);
         }
 
         canvas.addEventListener('mousedown', startPosition);
@@ -104,21 +149,113 @@
         canvas.addEventListener('touchmove', draw, {passive: false});
 
         function clearCanvas() {
+            if (isReplaying) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             trajectory = [];
         }
+        
+        function validateTrajectory() {
+            if (trajectory.length === 0) return "Empty drawing.";
+            
+            let totalPoints = 0;
+            let totalDist = 0;
+            
+            for (const stroke of trajectory) {
+                totalPoints += stroke.length;
+                for (let i = 1; i < stroke.length; i++) {
+                    const dx = stroke[i].x - stroke[i-1].x;
+                    const dy = stroke[i].y - stroke[i-1].y;
+                    totalDist += Math.sqrt(dx*dx + dy*dy);
+                }
+            }
+            
+            if (totalPoints < 5) return "Accidental click (too few points).";
+            if (totalDist < 10) return "Trajectory too tiny.";
+            
+            return null; // Valid
+        }
 
-        function saveTrajectory() {
-            if (trajectory.length === 0) {
-                alert("Please write the word before saving!");
+        function replayTrajectory() {
+            if (trajectory.length === 0 || isReplaying) return;
+            isReplaying = true;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            setContextStyle();
+            
+            let allPoints = [];
+            for (let sIdx = 0; sIdx < trajectory.length; sIdx++) {
+                const stroke = trajectory[sIdx];
+                for (let pIdx = 0; pIdx < stroke.length; pIdx++) {
+                    allPoints.push({
+                        ...stroke[pIdx], 
+                        isNewStroke: pIdx === 0
+                    });
+                }
+            }
+            
+            if (allPoints.length === 0) {
+                isReplaying = false;
                 return;
             }
             
+            let startT = allPoints[0].t;
+            let idx = 0;
+            
+            function animate() {
+                if (idx >= allPoints.length) {
+                    isReplaying = false;
+                    ctx.beginPath();
+                    return;
+                }
+                
+                const p = allPoints[idx];
+                
+                if (p.isNewStroke) {
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                } else {
+                    ctx.lineTo(p.x, p.y);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                }
+                
+                idx++;
+                
+                if (idx < allPoints.length) {
+                    const timeDiff = allPoints[idx].t - p.t;
+                    // Cap huge delays for replay
+                    const delay = Math.min(Math.max(timeDiff, 10), 200); 
+                    setTimeout(animate, delay);
+                } else {
+                    animate();
+                }
+            }
+            
+            animate();
+        }
+
+        function saveTrajectory() {
+            if (isReplaying) return;
+            
+            const error = validateTrajectory();
+            if (error) {
+                alert("Validation Failed: " + error + "\nPlease try again.");
+                clearCanvas();
+                return;
+            }
+            
+            const writer_id = writerIdInput.value.trim() || "writer_unknown";
+            
             const payload = {
-                word: words[currentWordIndex],
+                writer_id: writer_id,
+                word: prompts[currentPromptIndex],
+                script: "Devanagari",
+                device: deviceSelect.value,
                 canvas_width: canvas.width,
                 canvas_height: canvas.height,
-                timestamp: Date.now(),
+                timestamp: new Date().toISOString(),
+                sampling_rate: "browser-event-driven",
                 strokes: trajectory
             };
             
@@ -129,23 +266,44 @@
             })
             .then(response => response.json())
             .then(data => {
-                statusDiv.innerText = "Saved successfully!";
-                setTimeout(() => statusDiv.innerText = "", 2000);
+                showStatus("Saved successfully!", "green");
                 
-                // Next word
-                currentWordIndex = (currentWordIndex + 1) % words.length;
-                wordDisplay.innerText = words[currentWordIndex];
+                // Next sample or word
+                currentSampleCount++;
+                if (currentSampleCount > SAMPLES_PER_PROMPT) {
+                    currentSampleCount = 1;
+                    currentPromptIndex++;
+                }
+                
+                if (currentPromptIndex >= prompts.length) {
+                    alert("Dataset collection complete! Thank you.");
+                    currentPromptIndex = 0; // Loop or stop
+                }
+                
+                updateUI();
                 clearCanvas();
             })
             .catch(error => {
                 console.error("Error:", error);
-                statusDiv.innerText = "Error saving data!";
-                statusDiv.style.color = "red";
+                showStatus("Error saving data!", "red");
             });
         }
         
+        function showStatus(msg, color) {
+            statusDiv.innerText = msg;
+            statusDiv.style.color = color;
+            setTimeout(() => statusDiv.innerText = "", 2000);
+        }
+        
+        function updateUI() {
+            if (currentPromptIndex < prompts.length) {
+                wordDisplay.innerText = prompts[currentPromptIndex];
+                progressDisplay.innerText = `Sample ${currentSampleCount} of ${SAMPLES_PER_PROMPT} for this prompt`;
+            }
+        }
+        
         // Initialize
-        wordDisplay.innerText = words[currentWordIndex];
+        updateUI();
     </script>
 </body>
 </html>
