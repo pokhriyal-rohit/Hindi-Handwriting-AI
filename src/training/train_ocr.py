@@ -114,7 +114,8 @@ def train_ocr_model(
             preds = preds.permute(1, 0, 2) 
             preds = torch.nn.functional.log_softmax(preds, dim=2)
             
-            pred_lengths = model.get_output_length(input_lengths).to(device)
+            ocr_model = model.module if is_ddp else model
+            pred_lengths = ocr_model.get_output_length(input_lengths).to(device)
             pred_lengths = torch.clamp(pred_lengths, max=preds.size(0))
             
             loss = criterion(preds, targets_1d, pred_lengths, target_lengths)
@@ -147,7 +148,8 @@ def train_ocr_model(
                     
                     preds = model(images)
                     preds_ctc = torch.nn.functional.log_softmax(preds.permute(1, 0, 2), dim=2)
-                    pred_lengths = torch.clamp(model.get_output_length(input_lengths), max=preds_ctc.size(0)).to(device)
+                    ocr_model = model.module if is_ddp else model
+                    pred_lengths = torch.clamp(ocr_model.get_output_length(input_lengths), max=preds_ctc.size(0)).to(device)
                     
                     val_loss = criterion(preds_ctc, targets_1d, pred_lengths, target_lengths)
                     val_loss_total += val_loss.item()
