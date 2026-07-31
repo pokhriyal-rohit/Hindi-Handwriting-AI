@@ -28,8 +28,8 @@ class CustomCollectorConverter:
                     Point(
                         x=float(p["x"]),
                         y=float(p["y"]),
-                        time=float(p["t"]),
-                        pen_state=0.0 if is_last else 1.0
+                        timestamp=float(p.get("t", 0.0)),
+                        pen_state=0 if is_last else 1
                     )
                 )
             if points:
@@ -38,8 +38,8 @@ class CustomCollectorConverter:
         metadata = DatasetMetadata(
             dataset_name="custom_collector",
             dataset_version="1.0.0",
-            resolution=1000, # Assuming canvas coordinates
-            hz=60 # Browsers typically fire mousemove at 60Hz
+            sampling_rate_hz=60.0,  # Browsers typically fire mousemove at ~60Hz
+            is_synthetic=False
         )
         
         return TrajectorySample(

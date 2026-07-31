@@ -1,7 +1,7 @@
 import time
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
 from src.training.dataset import SyntheticTrajectoryDataset, CustomTrajectoryDataset, synthetic_collate_fn
 from src.models.baseline_lstm import BaselineLSTM
@@ -19,15 +19,28 @@ def compute_grad_norm(model: torch.nn.Module) -> float:
             total_norm += param_norm.item() ** 2
     return total_norm ** 0.5
 
-def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = None):
+def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = None, val_split: float = 0.1, batch_size: int = 32):
     tracker = ExperimentTracker(exp_id=exp_id)
-    
+
     import os
     data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "custom_hindi"))
-    dataset = CustomTrajectoryDataset(data_dir=data_dir)
-    # Batch size 5 for testing
-    dataloader = DataLoader(dataset, batch_size=5, shuffle=True, collate_fn=synthetic_collate_fn)
-    
+    full_dataset = CustomTrajectoryDataset(data_dir=data_dir)
+
+    # --- Validation split ---
+    n_total = len(full_dataset)
+    n_val = max(1, int(n_total * val_split))
+    n_train = n_total - n_val
+    if n_total < 2:
+        raise ValueError(f"Dataset has only {n_total} sample(s) — need at least 2 to create a validation split.")
+    train_dataset, val_dataset = random_split(
+        full_dataset, [n_train, n_val],
+        generator=torch.Generator().manual_seed(42)  # fixed seed for reproducibility
+    )
+    print(f"Dataset split: {n_train} train / {n_val} validation (seed=42)")
+
+    dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=synthetic_collate_fn)
+    val_loader  = DataLoader(val_dataset,  batch_size=batch_size, shuffle=False, collate_fn=synthetic_collate_fn)
+
     model = BaselineLSTM(vocab_size=5000, embed_dim=64, hidden_dim=128, max_out_len=200)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = TrajectoryLoss()
@@ -42,6 +55,11 @@ def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = 
         
     tracker.save_config({
         "epochs": epochs,
+        "batch_size": batch_size,
+        "val_split": val_split,
+        "n_train": n_train,
+        "n_val": n_val,
+        "val_seed": 42,
         "vocab_size": 5000,
         "lr": 1e-3,
         "model": "BaselineLSTM"
@@ -73,11 +91,21 @@ def train_model(epochs: int = 100, exp_id: str = None, resume_checkpoint: str = 
             
         epoch_time = time.time() - t0
         avg_loss = total_loss / len(dataloader)
-        
-        print(f"Epoch {epoch:03d} | Loss: {avg_loss:.4f} | Grad: {grad_norm:.2f} | Time: {epoch_time:.2f}s")
-        
+
+        # --- Validation pass ---
+        model.eval()
+        val_loss_total = 0.0
+        with torch.no_grad():
+            for tokens, t_lens, coords, c_lens in val_loader:
+                preds = model(tokens, target_len=coords.size(1))
+                val_loss_total += loss_fn(preds, coords, c_lens).item()
+        avg_val_loss = val_loss_total / len(val_loader)
+
+        print(f"Epoch {epoch:03d} | Train Loss: {avg_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Grad: {grad_norm:.2f} | Time: {epoch_time:.2f}s")
+
         tracker.log_epoch(epoch, {
             "loss": avg_loss,
+            "val_loss": avg_val_loss,
             "grad_norm": grad_norm,
             "lr": optimizer.param_groups[0]['lr'],
             "time_sec": epoch_time

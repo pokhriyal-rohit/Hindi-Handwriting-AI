@@ -16,8 +16,6 @@ class Registry:
         "pressure_models": {},
         "ink_models": {},
         "exporters": {},
-        "ink_models": {},
-        "exporters": {},
         "metrics": {},
         "postprocessors": {},
         "hooks": {}

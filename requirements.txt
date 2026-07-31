@@ -1,6 +1,17 @@
+# Core
 torch
 numpy
 pydantic
 PyYAML
 tqdm
 matplotlib
+
+# Evaluation metrics (install all for full benchmark suite)
+fastdtw
+scipy
+similaritymeasures
+psutil
+
+# Rendering exporters (optional — required for PNG/PDF/GIF/MP4 export)
+# cairosvg    # needed for PNG and PDF export
+# Pillow      # needed for GIF and MP4 export

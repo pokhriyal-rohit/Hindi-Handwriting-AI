@@ -60,27 +60,26 @@ class CustomTrajectoryDataset(Dataset):
                 
                 # Extract coordinates back to [L, 3] tensor for training
                 coords = []
+                last_x, last_y = 0.0, 0.0  # local to this sample — no cross-sample leakage
                 for stroke in traj_sample.strokes:
                     for i, pt in enumerate(stroke.points):
                         # Simple relative delta
                         if i == 0 and not coords:
                             dx, dy = 0.0, 0.0
                         elif i == 0:
-                            # Jump from previous stroke
-                            last_pt_x = self._last_x
-                            last_pt_y = self._last_y
-                            dx = pt.x - last_pt_x
-                            dy = pt.y - last_pt_y
+                            # Pen-up jump from end of previous stroke
+                            dx = pt.x - last_x
+                            dy = pt.y - last_y
                         else:
                             prev_pt = stroke.points[i-1]
                             dx = pt.x - prev_pt.x
                             dy = pt.y - prev_pt.y
-                            
-                        self._last_x = pt.x
-                        self._last_y = pt.y
-                        
+
+                        last_x = pt.x
+                        last_y = pt.y
+
                         coords.append([dx, dy, pt.pen_state])
-                        
+
                 if coords:
                     self.samples.append((tokens, torch.tensor(coords, dtype=torch.float32)))
             except Exception as e:
