@@ -44,6 +44,10 @@ def run_inference_tests():
         run_integration_scenarios()
         print("[PASS] Integration Scenarios passed")
         
+        from tests.integration.golden_pipeline import run_golden_pipeline
+        run_golden_pipeline()
+        print("[PASS] Golden Pipeline Integration passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         import traceback
