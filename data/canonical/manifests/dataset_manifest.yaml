@@ -1,0 +1,10 @@
+dataset_name: Hindi-Handwriting-Canonical
+version: 1.0.0
+generated_at: '2026-07-31T09:26:04.332473+00:00'
+license: Research Use Only
+total_valid_samples: 410
+total_writers: 1
+language: hi
+script: devanagari
+data_types:
+- online_trajectory

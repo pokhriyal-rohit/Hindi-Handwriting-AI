@@ -3,14 +3,13 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 
-from src.training.dataset import SyntheticTrajectoryDataset, CustomTrajectoryDataset, synthetic_collate_fn
+from src.training.dataset import SyntheticTrajectoryDataset, CustomTrajectoryDataset, CanonicalTrajectoryDataset, synthetic_collate_fn
 from src.models.baseline_lstm import BaselineLSTM
 from src.training.loss import TrajectoryLoss
 from src.training.experiment import ExperimentTracker
 from src.training.utils import tensor_to_trajectory
 from src.renderer.pipeline import RenderingEngine
 from src.renderer.config import RenderingConfig
-from src.datasets.validation import pre_training_gate, DatasetValidationError
 
 def compute_grad_norm(model: torch.nn.Module) -> float:
     total_norm = 0.0
@@ -88,27 +87,29 @@ def train_model(
     tracker = ExperimentTracker(exp_id=exp_id)
 
     import os
-    data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "custom_hindi"))
+    # We now strictly train on the canonical unified dataset
+    canonical_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "canonical"))
+    
+    train_dir = os.path.join(canonical_dir, "train")
+    val_dir   = os.path.join(canonical_dir, "validation")
+    
+    if not os.path.exists(train_dir):
+        raise RuntimeError(f"Canonical train directory missing: {train_dir}\nRun scripts/build_canonical_dataset.py first.")
 
-    # ── Pre-training validation gate ──────────────────────────────────────────
-    pre_training_gate(data_dir, force=force_train)
-
-    full_dataset = CustomTrajectoryDataset(data_dir=data_dir)
-
-    # --- Validation split ---
-    n_total = len(full_dataset)
-    n_val = max(1, int(n_total * val_split))
-    n_train = n_total - n_val
-    if n_total < 2:
-        raise ValueError(f"Dataset has only {n_total} sample(s) — need at least 2 to create a validation split.")
-    train_dataset, val_dataset = random_split(
-        full_dataset, [n_train, n_val],
-        generator=torch.Generator().manual_seed(42)  # fixed seed for reproducibility
-    )
-    print(f"Dataset split: {n_train} train / {n_val} validation (seed=42)")
+    train_dataset = CanonicalTrajectoryDataset(data_dir=train_dir)
+    val_dataset   = CanonicalTrajectoryDataset(data_dir=val_dir)
+    
+    n_train = len(train_dataset)
+    n_val   = len(val_dataset)
+    print(f"Canonical Dataset loaded: {n_train} train / {n_val} validation")
 
     dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=synthetic_collate_fn)
-    val_loader  = DataLoader(val_dataset,  batch_size=batch_size, shuffle=False, collate_fn=synthetic_collate_fn)
+    
+    if n_val > 0:
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=synthetic_collate_fn)
+    else:
+        # If val is empty (e.g. single writer placed fully in train), handle gracefully
+        val_loader = []
 
     model = BaselineLSTM(vocab_size=5000, embed_dim=64, hidden_dim=128, max_out_len=200)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
@@ -164,17 +165,19 @@ def train_model(
         avg_loss = total_loss / len(dataloader)
 
         # ── Validation pass (loss) ────────────────────────────────────────────
-        model.eval()
         val_loss_total = 0.0
-        with torch.no_grad():
-            for tokens, t_lens, coords, c_lens in val_loader:
-                preds = model(tokens, target_len=coords.size(1))
-                val_loss_total += loss_fn(preds, coords, c_lens).item()
-        avg_val_loss = val_loss_total / len(val_loader)
+        avg_val_loss = 0.0
+        if val_loader:
+            model.eval()
+            with torch.no_grad():
+                for tokens, t_lens, coords, c_lens in val_loader:
+                    preds = model(tokens, target_len=coords.size(1))
+                    val_loss_total += loss_fn(preds, coords, c_lens).item()
+            avg_val_loss = val_loss_total / len(val_loader)
 
         # ── Per-epoch geometry metrics on val set ─────────────────────────────
         geo_metrics: dict = {}
-        if epoch % eval_every == 0 or epoch == epochs:
+        if val_loader and (epoch % eval_every == 0 or epoch == epochs):
             geo_metrics = _compute_val_geometry(
                 model, val_loader, max_eval_samples
             )

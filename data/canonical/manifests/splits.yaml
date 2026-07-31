@@ -1,0 +1,12 @@
+generated_at: '2026-07-31T09:26:04.328684+00:00'
+strategy: writer-disjoint
+seed: 42
+assignments:
+  train:
+  - writer_mock
+  validation: []
+  test: []
+counts:
+  train: 410
+  validation: 0
+  test: 0

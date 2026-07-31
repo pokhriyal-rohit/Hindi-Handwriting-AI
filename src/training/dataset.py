@@ -39,6 +39,7 @@ class SyntheticTrajectoryDataset(Dataset):
 import os
 import glob
 from src.datasets.converters import CustomCollectorConverter
+from src.datasets.structures import TrajectorySample
 
 class CustomTrajectoryDataset(Dataset):
     """
@@ -84,6 +85,59 @@ class CustomTrajectoryDataset(Dataset):
                     self.samples.append((tokens, torch.tensor(coords, dtype=torch.float32)))
             except Exception as e:
                 print(f"Failed to load {filepath}: {e}")
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        return self.samples[idx]
+
+
+class CanonicalTrajectoryDataset(Dataset):
+    """
+    Loads unified trajectory samples from the data/canonical/ directories.
+    These files are already strict TrajectorySample JSON objects and have passed validation.
+    """
+    def __init__(self, data_dir: str):
+        self.samples = []
+        
+        # Crawl hierarchy data/canonical/<split>/<writer>/<sample>.json
+        json_files = glob.glob(os.path.join(data_dir, "*", "*.json"))
+        
+        for filepath in json_files:
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    traj_sample = TrajectorySample.model_validate_json(f.read())
+                
+                # Tokenize (simple ordinal mapping for now)
+                tokens = torch.tensor([ord(c) for c in traj_sample.text], dtype=torch.long)
+                
+                # Extract coordinates back to [L, 3] tensor for training
+                coords = []
+                last_x, last_y = 0.0, 0.0
+                for stroke in traj_sample.strokes:
+                    for i, pt in enumerate(stroke.points):
+                        # Simple relative delta
+                        if i == 0 and not coords:
+                            dx, dy = 0.0, 0.0
+                        elif i == 0:
+                            # Pen-up jump from end of previous stroke
+                            dx = pt.x - last_x
+                            dy = pt.y - last_y
+                        else:
+                            prev_pt = stroke.points[i-1]
+                            dx = pt.x - prev_pt.x
+                            dy = pt.y - prev_pt.y
+                            
+                        last_x = pt.x
+                        last_y = pt.y
+                        
+                        coords.append([dx, dy, pt.pen_state])
+                        
+                if coords:
+                    self.samples.append((tokens, torch.tensor(coords, dtype=torch.float32)))
+            except Exception as e:
+                print(f"Failed to load canonical sample {filepath}: {e}")
 
     def __len__(self) -> int:
         return len(self.samples)
