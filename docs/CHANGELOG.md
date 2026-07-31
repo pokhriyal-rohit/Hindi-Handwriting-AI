@@ -19,3 +19,6 @@
   - Created `src/renderer/layout/advanced.py` housing `ParagraphLayout` and `NotebookLayout`.
   - Implemented dynamic geometric wrapping algorithm for paragraph structures.
   - Integrated `NotebookLayout` to forcefully align multiline text against consistent baseline heights.
+- **Subsystem 5: Profiling & Visual Regression**
+  - Integrated `time.perf_counter()` hooks directly into `RenderingEngine.render()` pipeline, logging microsecond-precision benchmarks to `docs/RENDERER_PROFILE.md`.
+  - Implemented deterministic `test_visual_regression_svg` generating hardcoded baseline hashes in `tests/fixtures/svg/baseline_test_001.svg` to strictly catch unintended geometric scaling or configuration drifts.

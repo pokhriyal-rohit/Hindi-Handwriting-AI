@@ -20,6 +20,10 @@ def run_tests():
         test_layout_scaling(traj)
         print("[PASS] Layout scaling test passed")
         
+        from tests.test_visual_regression import test_visual_regression_svg
+        test_visual_regression_svg()
+        print("[PASS] Visual regression test passed")
+        
         test_invalid_trajectory_exception()
         print("[PASS] Exception handling test passed")
         
