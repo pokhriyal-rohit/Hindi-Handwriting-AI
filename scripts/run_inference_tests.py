@@ -36,6 +36,10 @@ def run_inference_tests():
         test_inference_hooks()
         print("[PASS] Inference Hooks test passed")
         
+        from tests.test_inference_metadata import test_inference_metadata
+        test_inference_metadata()
+        print("[PASS] End-to-End Runtime Metadata test passed")
+        
         print("\nAll inference tests passed successfully!")
     except Exception as e:
         import traceback

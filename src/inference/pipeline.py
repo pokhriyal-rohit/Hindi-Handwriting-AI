@@ -4,6 +4,7 @@ import time
 from src.inference.session import InferenceSession
 from src.inference.result import InferenceResult
 from src.inference.hooks import HookContext
+from src.inference.runtime import get_runtime_metadata
 from src.datasets.structures import TrajectorySample, DatasetMetadata, Stroke, Point
 
 logger = logging.getLogger(__name__)
@@ -150,6 +151,7 @@ class InferencePipeline:
             cache_statistics=cache_stats,
             export_paths=export_paths,
             metadata={
+                "runtime": get_runtime_metadata(),
                 "raw_tokens": tokens,
                 "raw_outputs": raw_outputs
             }
