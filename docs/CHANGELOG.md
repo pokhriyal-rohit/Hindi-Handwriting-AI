@@ -37,3 +37,7 @@
 - **Subsystem 3: Geometry Metrics**
   - Created `src/evaluation/metrics/geometry.py`.
   - Implemented static geometry metrics: `PathLengthDifferenceMetric`, `BoundingBoxDifferenceMetric`, and `SmoothnessScoreMetric` (computing angular variance).
+- **Subsystem 4: Performance & Rendering Metrics**
+  - Created `src/evaluation/metrics/performance.py`.
+  - Implemented `SVGGenerationTimeMetric` integrating `psutil` memory tracking and generating temporary renders inside the metric scope.
+  - Implemented `InferenceLatencyMetric` and `SystemMemoryUsageMetric` tracking model metadata cleanly attached via the `TrajectorySample.extensions` schema.

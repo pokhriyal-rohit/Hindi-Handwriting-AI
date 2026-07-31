@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 class Point(BaseModel):
@@ -38,6 +38,7 @@ class TrajectorySample(BaseModel):
     text: str = Field(description="The ground truth text transcript.")
     strokes: List[Stroke]
     metadata: DatasetMetadata
+    extensions: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary framework metadata (e.g., inference latency, rendering metrics).")
     
     def to_array(self) -> List[List[float]]:
         """Converts the trajectory to a raw list of [x, y, pen_state] arrays for continuous processing."""

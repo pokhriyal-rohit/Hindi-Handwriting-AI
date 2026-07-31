@@ -49,3 +49,17 @@ All metrics implement `BaseMetric` providing:
 - **Purpose**: Computes angular variance between sequential coordinate line segments. A higher variance implies jittery, unsmooth handwriting.
 - **Outputs**: `pred_smoothness`, `target_smoothness`, `smoothness_difference`
 
+### Performance & System Metrics (`src/evaluation/metrics/performance.py`)
+
+#### SVGGenerationTimeMetric (`render_svg`)
+- **Purpose**: Fully instantiates a sandboxed `RenderingEngine` and computes the exact time and system memory delta required to rasterize the geometric sample to SVG format.
+- **Outputs**: `svg_time`, `svg_memory_mb`
+
+#### InferenceLatencyMetric (`inference_latency`)
+- **Purpose**: Validates model generation time, propagating metadata extracted during model forward-passes.
+- **Outputs**: `inference_latency_ms`
+
+#### SystemMemoryUsageMetric (`system_memory`)
+- **Purpose**: Tracks system-level metrics capturing checkpoint size, GPU VRAM, and CPU RAM allocations for efficiency benchmarks.
+- **Outputs**: `gpu_memory_mb`, `cpu_memory_mb`, `checkpoint_size_mb`
+

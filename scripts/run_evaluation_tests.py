@@ -35,6 +35,16 @@ def run_evaluation_tests():
         test_smoothness_metric()
         print("[PASS] Smoothness gracefully tested")
         
+        from tests.test_evaluation_performance import test_svg_generation_metric, test_inference_latency_metric, test_system_memory_metric
+        test_svg_generation_metric()
+        print("[PASS] SVG Generation metric test passed")
+        
+        test_inference_latency_metric()
+        print("[PASS] Inference Latency metric test passed")
+        
+        test_system_memory_metric()
+        print("[PASS] System Memory metric test passed")
+        
         print("\nAll evaluation tests passed successfully!")
     except Exception as e:
         print(f"[FAIL] Test failed: {e}")
