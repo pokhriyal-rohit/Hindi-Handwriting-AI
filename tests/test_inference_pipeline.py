@@ -30,4 +30,15 @@ def test_inference_pipeline():
     assert trajectory.strokes[0].points[0].x == 1.0
     assert trajectory.strokes[0].points[3].x == 4.0
     
+    # Check Rendering Integration
+    import tempfile
+    import os
+    with tempfile.TemporaryDirectory() as tmpdir:
+        res2 = pipeline.generate("RENDER", run_dir=tmpdir)
+        assert "svg" in res2.export_paths
+        svg_path = res2.export_paths["svg"]
+        assert os.path.exists(svg_path)
+        with open(svg_path, "r") as f:
+            assert "<svg" in f.read()
+    
     session.shutdown()

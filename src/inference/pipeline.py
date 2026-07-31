@@ -70,9 +70,10 @@ class InferencePipeline:
             metadata=metadata
         )
         
-    def generate(self, text: str) -> InferenceResult:
+    def generate(self, text: str, run_dir: str = None) -> InferenceResult:
         """
         The single entrypoint for generating handwriting.
+        If run_dir is provided, it exports to that directory.
         """
         logger.info(f"Generating for text: '{text}'")
         timings = {}
@@ -124,9 +125,18 @@ class InferencePipeline:
                 
         ctx.trajectory = trajectory
         
-        # 6. Layout & Rendering (We skip file saving for pure pipeline dict for now)
+        # 6. Layout & Rendering
+        export_paths = {}
         for hook in self.session.hooks: hook.before_rendering(ctx)
-        # render here...
+        
+        if self.session.renderer and run_dir:
+            import os
+            os.makedirs(run_dir, exist_ok=True)
+            for fmt in self.session.config.export_formats:
+                out_path = os.path.join(run_dir, f"output.{fmt}")
+                self.session.renderer.render(trajectory, out_path, format=fmt)
+                export_paths[fmt] = out_path
+                
         for hook in self.session.hooks: hook.after_rendering(ctx)
         
         timings["total_ms"] = (time.perf_counter() - t_start) * 1000.0
@@ -138,6 +148,7 @@ class InferencePipeline:
             configuration=self.session.config,
             timing=timings,
             cache_statistics=cache_stats,
+            export_paths=export_paths,
             metadata={
                 "raw_tokens": tokens,
                 "raw_outputs": raw_outputs
