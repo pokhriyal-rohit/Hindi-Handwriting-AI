@@ -20,37 +20,66 @@
         #replay-btn { background-color: #28a745; }
         #replay-btn:hover { background-color: #218838; }
         #status { margin-top: 15px; font-weight: bold; }
+        
+        #summary-panel { display: none; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 600px; margin: 0 auto; text-align: left; }
+        #summary-panel h2 { color: #28a745; text-align: center; }
+        #summary-panel table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #summary-panel th, #summary-panel td { padding: 10px; border-bottom: 1px solid #ddd; }
+        #collection-panel { display: block; }
     </style>
 </head>
 <body>
 
     <h1>Dataset Collector</h1>
     
-    <div class="meta-container">
-        <label for="writer-id">Writer ID:</label>
-        <input type="text" id="writer-id" value="writer_001">
-        
-        <label for="device">Device:</label>
-        <select id="device">
-            <option value="mouse">Mouse</option>
-            <option value="stylus">Stylus / Tablet</option>
-            <option value="touch">Touchscreen</option>
-        </select>
-    </div>
+    <div id="collection-panel">
+        <div class="meta-container">
+            <label for="writer-id">Writer ID:</label>
+            <input type="text" id="writer-id" value="writer_001">
+            
+            <label for="device">Device:</label>
+            <select id="device">
+                <option value="mouse">Mouse</option>
+                <option value="stylus">Stylus / Tablet</option>
+                <option value="touch">Touchscreen</option>
+            </select>
+        </div>
 
-    <p>Please write the following character/word naturally:</p>
-    <div id="word-display"></div>
-    <div id="progress-display"></div>
-    
-    <canvas id="drawCanvas" width="800" height="400"></canvas>
-    
-    <div class="controls">
-        <button id="clear-btn" onclick="clearCanvas()">Clear</button>
-        <button id="replay-btn" onclick="replayTrajectory()">Replay</button>
-        <button onclick="saveTrajectory()">Save & Next</button>
+        <p>Please write the following character/word naturally:</p>
+        <div id="word-display"></div>
+        <div id="progress-display"></div>
+        
+        <canvas id="drawCanvas" width="800" height="400"></canvas>
+        
+        <div class="controls">
+            <button id="clear-btn" onclick="clearCanvas()">Clear</button>
+            <button id="replay-btn" onclick="replayTrajectory()">Replay</button>
+            <button onclick="saveTrajectory()">Save & Next</button>
+        </div>
+        
+        <div id="status"></div>
     </div>
     
-    <div id="status"></div>
+    <div id="summary-panel">
+        <h2>Session Summary</h2>
+        <p><strong>Writer ID:</strong> <span id="sum-writer"></span></p>
+        <p><strong>Device:</strong> <span id="sum-device"></span></p>
+        
+        <table>
+            <tbody>
+                <tr><td>Total Samples Collected</td><td id="sum-total">0</td></tr>
+                <tr><td>Rejected/Cleared Samples</td><td id="sum-rejected">0</td></tr>
+                <tr><td>Average Strokes per Sample</td><td id="sum-avg-strokes">0</td></tr>
+                <tr><td>Average Points per Sample</td><td id="sum-avg-points">0</td></tr>
+                <tr><td>Average Duration (ms)</td><td id="sum-avg-duration">0</td></tr>
+            </tbody>
+        </table>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <p><strong>Export Status:</strong> <span style="color: green;">Success - Files saved to data/raw/custom_hindi/</span></p>
+            <button onclick="location.reload()">Start New Session</button>
+        </div>
+    </div>
 
     <script>
         const canvas = document.getElementById('drawCanvas');
@@ -61,27 +90,50 @@
         const writerIdInput = document.getElementById('writer-id');
         const deviceSelect = document.getElementById('device');
         
-        // Stage A (Chars), Stage B (Ligatures), Stage C (Words), Stage D (Sentences)
+        const collectionPanel = document.getElementById('collection-panel');
+        const summaryPanel = document.getElementById('summary-panel');
+        
+        // As requested: 20 Chars, 10 Ligatures, 20 Words, 10 Sentences
+        // For brevity in code, here's a representative subset
         const prompts = [
-            // Characters
-            "क", "ख", "ग", "घ",
-            // Ligatures
-            "क्ष", "त्र", "ज्ञ",
-            // Words
-            "भारत", "नमस्ते", "विद्यालय",
-            // Sentences
-            "भारत मेरा देश है।"
+            // Stage A: Characters
+            "क", "ख", "ग", "घ", "च", "छ", "ज", "झ", "ट", "ठ", 
+            "ड", "ढ", "त", "थ", "द", "ध", "न", "प", "फ", "ब",
+            // Stage B: Ligatures
+            "क्ष", "त्र", "ज्ञ", "श्र", "त्त", "द्ध", "द्य", "द्व", "ह्म", "ह्य",
+            // Stage C: Words
+            "भारत", "नमस्ते", "विद्यालय", "विज्ञान", "शांति", "प्रेम", "सत्य", "पुस्तकालय", "अध्यापक", "विद्यार्थी",
+            "संस्कृति", "धर्म", "ज्ञान", "प्रकाश", "आसमान", "धरती", "समुद्र", "पर्वत", "नदी", "वन",
+            // Stage D: Sentences
+            "भारत मेरा देश है।", "सभी भारतीय मेरे भाई-बहन हैं।", "मुझे अपने देश से प्यार है।", 
+            "सत्यमेव जयते।", "अहिंसा परमो धर्मः।", "ज्ञान ही शक्ति है।", 
+            "परिश्रम सफलता की कुंजी है।", "समय का सदुपयोग करें।", "स्वस्थ शरीर में स्वस्थ मन रहता है।", "विद्या विनयेन शोभते।"
         ];
         
-        const SAMPLES_PER_PROMPT = 5; // Reduced from 20 for testing ease, but can be increased
+        // Number of repetitions per prompt type
+        function getRepetitions(index) {
+            if (index < 20) return 10; // Characters
+            if (index < 30) return 10; // Ligatures
+            if (index < 50) return 10; // Words
+            return 5; // Sentences
+        }
         
         let currentPromptIndex = 0;
         let currentSampleCount = 1;
         
         let isDrawing = false;
         let isReplaying = false;
-        let trajectory = []; // Array of strokes
-        let currentStroke = []; // Array of {x, y, t}
+        let trajectory = []; 
+        let currentStroke = []; 
+        
+        // Session Statistics
+        let sessionStats = {
+            totalSaved: 0,
+            totalRejected: 0,
+            sumStrokes: 0,
+            sumPoints: 0,
+            sumDuration: 0
+        };
         
         function setContextStyle() {
             ctx.lineWidth = 4;
@@ -148,31 +200,64 @@
         canvas.addEventListener('touchend', endPosition);
         canvas.addEventListener('touchmove', draw, {passive: false});
 
-        function clearCanvas() {
+        function clearCanvas(isRejected = true) {
             if (isReplaying) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             trajectory = [];
+            if (isRejected) sessionStats.totalRejected++;
         }
         
-        function validateTrajectory() {
-            if (trajectory.length === 0) return "Empty drawing.";
-            
+        function computeSampleStatistics() {
             let totalPoints = 0;
             let totalDist = 0;
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            let maxSpeed = 0;
+            
+            let minT = Infinity, maxT = -Infinity;
             
             for (const stroke of trajectory) {
                 totalPoints += stroke.length;
-                for (let i = 1; i < stroke.length; i++) {
-                    const dx = stroke[i].x - stroke[i-1].x;
-                    const dy = stroke[i].y - stroke[i-1].y;
-                    totalDist += Math.sqrt(dx*dx + dy*dy);
+                for (let i = 0; i < stroke.length; i++) {
+                    const p = stroke[i];
+                    minX = Math.min(minX, p.x);
+                    maxX = Math.max(maxX, p.x);
+                    minY = Math.min(minY, p.y);
+                    maxY = Math.max(maxY, p.y);
+                    minT = Math.min(minT, p.t);
+                    maxT = Math.max(maxT, p.t);
+                    
+                    if (i > 0) {
+                        const prev = stroke[i-1];
+                        const dx = p.x - prev.x;
+                        const dy = p.y - prev.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        const dt = Math.max(1, p.t - prev.t); // prevent div by zero
+                        totalDist += dist;
+                        const speed = dist / dt;
+                        maxSpeed = Math.max(maxSpeed, speed);
+                    }
                 }
             }
             
-            if (totalPoints < 5) return "Accidental click (too few points).";
-            if (totalDist < 10) return "Trajectory too tiny.";
+            const duration = maxT - minT;
+            const avgSpeed = duration > 0 ? totalDist / duration : 0;
             
-            return null; // Valid
+            return {
+                strokes: trajectory.length,
+                points: totalPoints,
+                duration_ms: duration,
+                path_length_px: totalDist,
+                avg_speed_px_ms: avgSpeed,
+                max_speed_px_ms: maxSpeed,
+                bounding_box: { min_x: minX, max_x: maxX, min_y: minY, max_y: maxY }
+            };
+        }
+
+        function validateTrajectory(stats) {
+            if (stats.points < 5) return "Accidental click (too few points).";
+            if (stats.path_length_px < 10) return "Trajectory too tiny.";
+            if (stats.strokes === 0) return "Empty drawing.";
+            return null;
         }
 
         function replayTrajectory() {
@@ -198,7 +283,6 @@
                 return;
             }
             
-            let startT = allPoints[0].t;
             let idx = 0;
             
             function animate() {
@@ -224,24 +308,41 @@
                 
                 if (idx < allPoints.length) {
                     const timeDiff = allPoints[idx].t - p.t;
-                    // Cap huge delays for replay
                     const delay = Math.min(Math.max(timeDiff, 10), 200); 
                     setTimeout(animate, delay);
                 } else {
                     animate();
                 }
             }
-            
             animate();
+        }
+
+        function finishSession() {
+            collectionPanel.style.display = 'none';
+            summaryPanel.style.display = 'block';
+            
+            document.getElementById('sum-writer').innerText = writerIdInput.value || 'Unknown';
+            document.getElementById('sum-device').innerText = deviceSelect.options[deviceSelect.selectedIndex].text;
+            
+            document.getElementById('sum-total').innerText = sessionStats.totalSaved;
+            document.getElementById('sum-rejected').innerText = sessionStats.totalRejected;
+            
+            const count = Math.max(1, sessionStats.totalSaved);
+            document.getElementById('sum-avg-strokes').innerText = (sessionStats.sumStrokes / count).toFixed(1);
+            document.getElementById('sum-avg-points').innerText = (sessionStats.sumPoints / count).toFixed(1);
+            document.getElementById('sum-avg-duration').innerText = (sessionStats.sumDuration / count).toFixed(0);
         }
 
         function saveTrajectory() {
             if (isReplaying) return;
+            if (trajectory.length === 0) return;
             
-            const error = validateTrajectory();
+            const stats = computeSampleStatistics();
+            const error = validateTrajectory(stats);
+            
             if (error) {
                 alert("Validation Failed: " + error + "\nPlease try again.");
-                clearCanvas();
+                clearCanvas(true);
                 return;
             }
             
@@ -256,6 +357,7 @@
                 canvas_height: canvas.height,
                 timestamp: new Date().toISOString(),
                 sampling_rate: "browser-event-driven",
+                statistics: stats,
                 strokes: trajectory
             };
             
@@ -268,20 +370,25 @@
             .then(data => {
                 showStatus("Saved successfully!", "green");
                 
-                // Next sample or word
+                sessionStats.totalSaved++;
+                sessionStats.sumStrokes += stats.strokes;
+                sessionStats.sumPoints += stats.points;
+                sessionStats.sumDuration += stats.duration_ms;
+                
+                const repsNeeded = getRepetitions(currentPromptIndex);
                 currentSampleCount++;
-                if (currentSampleCount > SAMPLES_PER_PROMPT) {
+                
+                if (currentSampleCount > repsNeeded) {
                     currentSampleCount = 1;
                     currentPromptIndex++;
                 }
                 
                 if (currentPromptIndex >= prompts.length) {
-                    alert("Dataset collection complete! Thank you.");
-                    currentPromptIndex = 0; // Loop or stop
+                    finishSession();
+                } else {
+                    updateUI();
+                    clearCanvas(false);
                 }
-                
-                updateUI();
-                clearCanvas();
             })
             .catch(error => {
                 console.error("Error:", error);
@@ -298,11 +405,16 @@
         function updateUI() {
             if (currentPromptIndex < prompts.length) {
                 wordDisplay.innerText = prompts[currentPromptIndex];
-                progressDisplay.innerText = `Sample ${currentSampleCount} of ${SAMPLES_PER_PROMPT} for this prompt`;
+                const totalNeeded = getRepetitions(currentPromptIndex);
+                let cat = "Characters";
+                if(currentPromptIndex >= 20) cat = "Ligatures";
+                if(currentPromptIndex >= 30) cat = "Words";
+                if(currentPromptIndex >= 50) cat = "Sentences";
+                
+                progressDisplay.innerText = `[${cat}] Sample ${currentSampleCount} of ${totalNeeded}`;
             }
         }
         
-        // Initialize
         updateUI();
     </script>
 </body>
