@@ -122,7 +122,7 @@ def cmd_validate_dataset(args):
     cfg = load_colab_config()
     data_dir = cfg["dataset"].get("online", {}).get("train", "data/canonical/online/train")
     if os.path.exists(data_dir):
-        validate_directory(data_dir, stop_on_first_error=False)
+        validate_directory(data_dir)
     else:
         print(f"Directory {data_dir} not found.")
 
