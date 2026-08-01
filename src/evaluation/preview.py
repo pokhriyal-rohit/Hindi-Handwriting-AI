@@ -59,7 +59,7 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
     model.eval()
     
     with torch.no_grad():
-        for i, (images, targets_1d, target_lengths, raw_texts) in enumerate(loader):
+        for i, (images, input_lengths, texts, metadata) in enumerate(loader):
             images = images.to(device)
             preds = model(images)
             preds = preds.permute(1, 0, 2)
@@ -72,7 +72,7 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
                 
             plt.figure(figsize=(6, 3))
             plt.imshow(img_np, cmap='gray' if len(img_np.shape) == 2 else None)
-            plt.title(f"Target: {raw_texts[0]}\nPred: {pred_text}", fontname='Nirmala UI' if os.name == 'nt' else 'sans-serif')
+            plt.title(f"Target: {texts[0]}\nPred: {pred_text}", fontname='Nirmala UI' if os.name == 'nt' else 'sans-serif')
             plt.axis('off')
             out_path = os.path.join(preview_dir, f"preview_{i}.png")
             plt.savefig(out_path)

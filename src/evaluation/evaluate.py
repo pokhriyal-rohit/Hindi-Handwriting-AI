@@ -57,12 +57,11 @@ def evaluate_ocr(exp_id: str, split: str = "validation"):
     wer_scores = []
     
     with torch.no_grad():
-        for images, targets_1d, target_lengths, raw_texts in loader:
+        for images, input_lengths, texts, metadata in loader:
             images = images.to(device)
             preds = model(images)
             preds = preds.permute(1, 0, 2)
             preds = torch.nn.functional.log_softmax(preds, dim=2)
-            input_lengths = torch.full(size=(images.size(0),), fill_value=preds.size(1), dtype=torch.long)
             
             # Use greedy decoding for metrics
             # preds shape: [batch, time, classes]
@@ -70,8 +69,8 @@ def evaluate_ocr(exp_id: str, split: str = "validation"):
             
             for b in range(images.size(0)):
                 pred_text = tokenizer.decode(pred_indices[b].cpu().tolist(), remove_repeats=True)
-                cer_scores.append(OCRMetrics.compute_cer(raw_texts[b], pred_text))
-                wer_scores.append(OCRMetrics.compute_wer(raw_texts[b], pred_text))
+                cer_scores.append(OCRMetrics.compute_cer(texts[b], pred_text))
+                wer_scores.append(OCRMetrics.compute_wer(texts[b], pred_text))
                 
     avg_cer = sum(cer_scores) / len(cer_scores) if cer_scores else float('nan')
     avg_wer = sum(wer_scores) / len(wer_scores) if wer_scores else float('nan')
