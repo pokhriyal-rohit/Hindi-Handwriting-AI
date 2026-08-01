@@ -60,15 +60,16 @@ def evaluate_ocr(exp_id: str, split: str = "validation"):
         for images, input_lengths, texts, metadata in loader:
             images = images.to(device)
             preds = model(images)
-            preds = preds.permute(1, 0, 2)
-            preds = torch.nn.functional.log_softmax(preds, dim=2)
             
-            # Use greedy decoding for metrics
             # preds shape: [batch, time, classes]
             pred_indices = preds.argmax(dim=-1)
             
+            ocr_model = model.module if hasattr(model, 'module') else model
+            pred_lengths = torch.clamp(ocr_model.get_output_length(input_lengths), max=preds.size(1))
+            
             for b in range(images.size(0)):
-                pred_text = tokenizer.decode(pred_indices[b].cpu().tolist(), remove_repeats=True)
+                raw_pred = pred_indices[b, :pred_lengths[b]].cpu().tolist()
+                pred_text = tokenizer.decode(raw_pred, remove_repeats=True)
                 cer_scores.append(OCRMetrics.compute_cer(texts[b], pred_text))
                 wer_scores.append(OCRMetrics.compute_wer(texts[b], pred_text))
                 

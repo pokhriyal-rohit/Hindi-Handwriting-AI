@@ -62,9 +62,13 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
         for i, (images, input_lengths, texts, metadata) in enumerate(loader):
             images = images.to(device)
             preds = model(images)
-            preds = preds.permute(1, 0, 2)
             pred_indices = preds.argmax(dim=-1)
-            pred_text = tokenizer.decode(pred_indices[0].cpu().tolist())
+            
+            ocr_model = model.module if hasattr(model, 'module') else model
+            pred_lengths = torch.clamp(ocr_model.get_output_length(input_lengths), max=preds.size(1))
+            
+            raw_pred = pred_indices[0, :pred_lengths[0]].cpu().tolist()
+            pred_text = tokenizer.decode(raw_pred, remove_repeats=True)
             
             img_np = images[0].cpu().numpy().transpose(1, 2, 0)
             if img_np.shape[2] == 1:
