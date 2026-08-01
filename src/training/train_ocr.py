@@ -20,6 +20,7 @@ def train_ocr_model(
     config: Dict[str, Any],
     exp_id: str,
     resume_checkpoint: str = None,
+    augment: bool = False,
 ):
     is_ddp, local_rank, global_rank = setup_ddp()
     is_primary = (global_rank == 0)
@@ -57,7 +58,7 @@ def train_ocr_model(
         print(f"Tokenizer built and saved. Vocab size: {tokenizer.vocab_size}")
     
     # 2. Datasets
-    train_dataset = OfflineDataset(train_dir)
+    train_dataset = OfflineDataset(train_dir, augment=augment)
     val_dataset = OfflineDataset(val_dir)
     
     train_sampler = DistributedSampler(train_dataset, shuffle=True) if is_ddp else None

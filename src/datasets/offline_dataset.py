@@ -10,9 +10,10 @@ class OfflineDataset(Dataset):
     """
     Loads offline images and labels from data/canonical/offline/[split]/
     """
-    def __init__(self, data_dir: str, img_height: int = 32):
+    def __init__(self, data_dir: str, img_height: int = 32, augment: bool = False):
         self.data_dir = data_dir
         self.img_height = img_height
+        self.augment = augment
         
         labels_path = os.path.join(data_dir, "labels.json")
         if not os.path.exists(labels_path):
@@ -24,11 +25,20 @@ class OfflineDataset(Dataset):
         self.samples = list(self.labels.items()) # list of (rel_path, text)
         
         # We resize height to img_height and keep aspect ratio for width
-        self.transform = T.Compose([
-            T.Grayscale(1),
+        transforms_list = [T.Grayscale(1)]
+        
+        if self.augment:
+            transforms_list.extend([
+                T.RandomRotation(degrees=3, fill=255),
+                T.ColorJitter(brightness=0.2, contrast=0.2)
+            ])
+            
+        transforms_list.extend([
             T.ToTensor(),
             T.Normalize(mean=[0.5], std=[0.5])
         ])
+        
+        self.transform = T.Compose(transforms_list)
 
     def __len__(self):
         return len(self.samples)

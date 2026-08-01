@@ -158,8 +158,8 @@ def cmd_train_ocr(args):
     existing_runs = [d for d in os.listdir(ocr_exp_dir) if os.path.isdir(os.path.join(ocr_exp_dir, d))]
     exp_num = len(existing_runs) + 1
     exp_id = f"{date_str}_{exp_num:03d}_ocr"
-    
-    train_ocr_model(config=cfg, exp_id=exp_id)
+    augment = getattr(args, "augment", False)
+    train_ocr_model(config=cfg, exp_id=exp_id, augment=augment)
 
 def cmd_recognize(args):
     from src.inference.recognize import run_recognition
@@ -210,6 +210,7 @@ def main():
     parser_resume.add_argument("--exp_id", type=str, required=True)
     
     parser_train_ocr = subparsers.add_parser("train-ocr", help="Train OCR CRNN model")
+    parser_train_ocr.add_argument("--augment", action="store_true", help="Enable data augmentation for training")
     
     parser_ingest = subparsers.add_parser("ingest-offline", help="Ingest offline images")
     
