@@ -20,10 +20,10 @@ from datetime import datetime, timezone
 # Allow running as a top-level script without installing the package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.datasets.validation import validate_directory
+from src.datasets.validation import validate_canonical_dataset
 
 DEFAULT_DATA_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "data", "raw", "custom_hindi")
+    os.path.join(os.path.dirname(__file__), "..", "data", "canonical")
 )
 
 
@@ -32,12 +32,12 @@ def main() -> int:
     parser.add_argument(
         "--data-dir",
         default=DEFAULT_DATA_DIR,
-        help="Root directory of collected samples (default: data/raw/custom_hindi/)"
+        help="Root directory of canonical dataset (default: data/canonical)"
     )
     args = parser.parse_args()
 
     data_dir = os.path.abspath(args.data_dir)
-    report = validate_directory(data_dir)
+    report = validate_canonical_dataset(data_dir)
 
     total    = report["total_samples"]
     valid    = report["valid_samples"]

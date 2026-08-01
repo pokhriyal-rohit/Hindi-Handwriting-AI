@@ -20,39 +20,49 @@ def cmd_setup(args):
         print(f"GPU: {torch.cuda.get_device_name(0)}")
         
     cfg = load_colab_config()
-    data_dir = cfg["dataset"].get("online", {}).get("train", "data/canonical/online/train")
-    if not os.path.exists(data_dir):
-        print(f"ERROR: Canonical dataset not found at {data_dir}.")
+    canonical_root = "data/canonical"
+    if not os.path.exists(canonical_root):
+        print(f"ERROR: Canonical dataset not found at {canonical_root}.")
         print("Run scripts/build_canonical_dataset.py first.")
         sys.exit(1)
         
-    hash_val = compute_dataset_hash(data_dir)
+    hash_val = compute_dataset_hash(canonical_root)
     print(f"Dataset Hash (SHA-256): {hash_val[:16]}...")
     print("Setup verified successfully.")
 
 def cmd_info(args):
     cfg = load_colab_config()
-    data_dir = cfg["dataset"].get("online", {}).get("train", "data/canonical/online/train")
-    env = capture_environment(cfg, data_dir, time.time() if 'time' in globals() else 0)
+    canonical_root = "data/canonical"
+    env = capture_environment(cfg, canonical_root, time.time() if 'time' in globals() else 0)
     
     print("=== Repository Info ===")
     print(f"Git Commit: {env['git_commit']}")
     print(f"Dataset Hash: {env['dataset_hash']}")
     
-    try:
-        manifest_path = os.path.join(data_dir, "..", "..", "manifests", "statistics.json")
-        with open(manifest_path, "r") as f:
-            stats = json.load(f)
-            # The writers count is in writers.yaml, so let's load that
-            writers_path = os.path.join(data_dir, "..", "..", "manifests", "writers.yaml")
-            import yaml
-            with open(writers_path, "r") as wf:
-                writers = yaml.safe_load(wf)
-                print(f"Writers: {len(writers)}")
-                
-            print(f"Total Valid Samples: {stats.get('valid_samples', 'unknown')}")
-    except Exception:
-        print("Dataset statistics not found.")
+    # Calculate Writers dynamically
+    writers = set()
+    for mode in ["online", "offline"]:
+        for split in ["train", "validation", "test"]:
+            split_dir = os.path.join(canonical_root, mode, split)
+            if os.path.exists(split_dir):
+                for w in os.listdir(split_dir):
+                    if os.path.isdir(os.path.join(split_dir, w)) and w.startswith("writer_"):
+                        writers.add(w)
+    print(f"Total Unique Writers: {len(writers)}")
+    
+    # Parse validation report for samples
+    val_report_path = os.path.join(canonical_root, "validation_report.json")
+    if os.path.exists(val_report_path):
+        with open(val_report_path, "r", encoding="utf-8") as f:
+            report = json.load(f)
+            
+        online_samples = sum(s.get("total_samples", 0) for s in report.get("online", {}).values())
+        offline_samples = sum(s.get("total_samples", 0) for s in report.get("offline", {}).values())
+        
+        print(f"Total Canonical Samples (Online): {online_samples}")
+        print(f"Total Canonical Samples (Offline): {offline_samples}")
+    else:
+        print("Dataset sample counts not found. Run 'python main.py validate-dataset' first.")
         
     print(f"Python: {env['python_version'].split(' ')[0]}")
     print(f"Torch Version: {env['torch_version']}")
@@ -118,13 +128,9 @@ def cmd_benchmark(args):
     print("Benchmark not yet implemented.")
 
 def cmd_validate_dataset(args):
-    from scripts.validate_dataset import validate_directory
-    cfg = load_colab_config()
-    data_dir = cfg["dataset"].get("online", {}).get("train", "data/canonical/online/train")
-    if os.path.exists(data_dir):
-        validate_directory(data_dir)
-    else:
-        print(f"Directory {data_dir} not found.")
+    from scripts.validate_dataset import main as validate_main
+    sys.argv = ["scripts/validate_dataset.py", "--data-dir", "data/canonical"]
+    validate_main()
 
 def cmd_ingest_offline(args):
     from scripts.build_offline_dataset import main
