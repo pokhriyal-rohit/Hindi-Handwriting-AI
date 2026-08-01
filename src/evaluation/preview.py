@@ -1,17 +1,19 @@
 import os
 import torch
 import random
+import numpy as np
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     plt = None
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from src.datasets.offline_dataset import OfflineDataset, offline_collate_fn
 from src.datasets.online_dataset import CanonicalTrajectoryDataset, synthetic_collate_fn
 from src.tokenizers.devanagari import DevanagariTokenizer
 from src.models.ocr.registry import build_ocr_model
 from src.models.baseline_lstm import BaselineLSTM
 from src.training.utils import tensor_to_trajectory
+from src.evaluation.metrics.ocr import OCRMetrics
 from src.evaluation.visualization.plotters import plot_trajectory_overlay
 
 def preview_ocr(exp_id: str, num_samples: int = 5):
@@ -58,28 +60,72 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
         
     model.eval()
     
+    def decode_with_confidences(indices, confidences, tokenizer):
+        chars = []
+        confs = []
+        prev = -1
+        for i, idx in enumerate(indices):
+            if idx != prev and idx != 0:
+                chars.append(tokenizer.idx_to_char.get(idx, ""))
+                confs.append(confidences[i])
+            elif idx == prev and idx != 0:
+                confs[-1] = max(confs[-1], confidences[i])
+            prev = idx
+        return "".join(chars), confs
+
     with torch.no_grad():
         for i, (images, input_lengths, texts, metadata) in enumerate(loader):
             images = images.to(device)
             preds = model(images)
-            pred_indices = preds.argmax(dim=-1)
+            
+            probs = torch.nn.functional.softmax(preds, dim=-1)
+            pred_confidences, pred_indices = probs.max(dim=-1)
             
             ocr_model = model.module if hasattr(model, 'module') else model
             pred_lengths = torch.clamp(ocr_model.get_output_length(input_lengths), max=preds.size(1))
             
             raw_pred = pred_indices[0, :pred_lengths[0]].cpu().tolist()
-            pred_text = tokenizer.decode(raw_pred, remove_repeats=True)
+            raw_confs = pred_confidences[0, :pred_lengths[0]].cpu().tolist()
+            
+            pred_text, char_confs = decode_with_confidences(raw_pred, raw_confs, tokenizer)
+            
+            gt_text = texts[0]
+            cer = OCRMetrics.compute_cer(gt_text, pred_text)
+            wer = OCRMetrics.compute_wer(gt_text, pred_text)
+            overall_conf = sum(char_confs) / len(char_confs) if char_confs else 0.0
             
             img_np = images[0].cpu().numpy().transpose(1, 2, 0)
             if img_np.shape[2] == 1:
                 img_np = img_np.squeeze(-1)
                 
-            plt.figure(figsize=(6, 3))
-            plt.imshow(img_np, cmap='gray' if len(img_np.shape) == 2 else None)
-            plt.title(f"Target: {texts[0]}\nPred: {pred_text}", fontname='Nirmala UI' if os.name == 'nt' else 'sans-serif')
-            plt.axis('off')
+            fig = plt.figure(figsize=(10, 6))
+            gs = fig.add_gridspec(1, 2, width_ratios=[1, 1])
+            
+            ax1 = fig.add_subplot(gs[0])
+            ax1.imshow(img_np, cmap='gray' if len(img_np.shape) == 2 else None)
+            ax1.set_title("Input Image")
+            ax1.axis('off')
+            
+            ax2 = fig.add_subplot(gs[1])
+            ax2.axis('off')
+            
+            char_conf_lines = [f"{char} : {conf:.2f}" for char, conf in zip(pred_text, char_confs)]
+            char_conf_str = "\n".join(char_conf_lines)
+            
+            info_text = (
+                f"Ground Truth:\n{gt_text}\n\n"
+                f"Prediction:\n{pred_text}\n\n"
+                f"CER: {cer:.4f}  |  WER: {wer:.4f}\n"
+                f"Overall Confidence: {overall_conf:.2f}\n\n"
+                f"Character Confidence:\n{char_conf_str}"
+            )
+            
+            ax2.text(0.0, 1.0, info_text, transform=ax2.transAxes, 
+                     fontsize=12, verticalalignment='top', fontname='Nirmala UI' if os.name == 'nt' else 'sans-serif')
+            
+            plt.tight_layout()
             out_path = os.path.join(preview_dir, f"preview_{i}.png")
-            plt.savefig(out_path)
+            plt.savefig(out_path, bbox_inches='tight')
             plt.close()
             print(f"Saved OCR preview to {out_path}")
 

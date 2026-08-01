@@ -1,5 +1,7 @@
 import os
+import time
 import json
+import csv
 import torch
 from torch.utils.data import DataLoader
 from src.evaluation.metrics.ocr import OCRMetrics
@@ -53,37 +55,137 @@ def evaluate_ocr(exp_id: str, split: str = "validation"):
     
     print(f"Starting OCR evaluation on {split} ({len(dataset)} samples)...")
     
+    
+    # 1. Setup output directories
+    metrics_dir = os.path.join(exp_dir, "metrics")
+    predictions_dir = os.path.join(exp_dir, "predictions")
+    reports_dir = os.path.join(exp_dir, "reports")
+    os.makedirs(metrics_dir, exist_ok=True)
+    os.makedirs(predictions_dir, exist_ok=True)
+    os.makedirs(reports_dir, exist_ok=True)
+    
     cer_scores = []
     wer_scores = []
+    sample_metrics = []
+    total_time = 0.0
+    
+    def decode_with_confidences(indices, confidences, tokenizer):
+        chars = []
+        confs = []
+        prev = -1
+        for i, idx in enumerate(indices):
+            if idx != prev and idx != 0:
+                chars.append(tokenizer.idx_to_char.get(idx, ""))
+                confs.append(confidences[i])
+            elif idx == prev and idx != 0:
+                confs[-1] = max(confs[-1], confidences[i])
+            prev = idx
+        return "".join(chars), confs
     
     with torch.no_grad():
         for images, input_lengths, texts, metadata in loader:
             images = images.to(device)
+            start_time = time.time()
             preds = model(images)
+            total_time += time.time() - start_time
             
-            # preds shape: [batch, time, classes]
-            pred_indices = preds.argmax(dim=-1)
+            probs = torch.nn.functional.softmax(preds, dim=-1)
+            pred_confidences, pred_indices = probs.max(dim=-1)
             
             ocr_model = model.module if hasattr(model, 'module') else model
             pred_lengths = torch.clamp(ocr_model.get_output_length(input_lengths), max=preds.size(1))
             
             for b in range(images.size(0)):
                 raw_pred = pred_indices[b, :pred_lengths[b]].cpu().tolist()
-                pred_text = tokenizer.decode(raw_pred, remove_repeats=True)
-                cer_scores.append(OCRMetrics.compute_cer(texts[b], pred_text))
-                wer_scores.append(OCRMetrics.compute_wer(texts[b], pred_text))
+                raw_confs = pred_confidences[b, :pred_lengths[b]].cpu().tolist()
+                
+                pred_text, char_confs = decode_with_confidences(raw_pred, raw_confs, tokenizer)
+                
+                cer = OCRMetrics.compute_cer(texts[b], pred_text)
+                wer = OCRMetrics.compute_wer(texts[b], pred_text)
+                overall_conf = sum(char_confs) / len(char_confs) if char_confs else 0.0
+                
+                cer_scores.append(cer)
+                wer_scores.append(wer)
+                
+                # Format character confidences for output
+                char_conf_dict = {char: round(conf, 4) for char, conf in zip(pred_text, char_confs)}
+                
+                sample_metrics.append({
+                    "filename": metadata[b]["rel_path"],
+                    "ground_truth": texts[b],
+                    "predicted": pred_text,
+                    "overall_confidence": round(overall_conf, 4),
+                    "character_confidences": char_conf_dict,
+                    "cer": round(cer, 4),
+                    "wer": round(wer, 4)
+                })
                 
     avg_cer = sum(cer_scores) / len(cer_scores) if cer_scores else float('nan')
     avg_wer = sum(wer_scores) / len(wer_scores) if wer_scores else float('nan')
-    result = {"cer": avg_cer, "wer": avg_wer}
+    avg_conf = sum([m["overall_confidence"] for m in sample_metrics]) / len(sample_metrics) if sample_metrics else 0.0
+    avg_inf_time = (total_time / len(dataset)) * 1000 # ms per sample
+    
+    result = {
+        "exp_id": exp_id,
+        "split": split,
+        "num_samples": len(dataset),
+        "cer": avg_cer,
+        "wer": avg_wer,
+        "average_confidence": avg_conf,
+        "avg_inference_time_ms": avg_inf_time,
+        "checkpoint": os.path.basename(ckpt_path)
+    }
     
     print(f"Evaluation complete.")
     print(f"CER: {result['cer']:.4f} | WER: {result['wer']:.4f}")
     
-    report_path = os.path.join(exp_dir, f"evaluation_{split}.json")
-    with open(report_path, "w") as f:
-        json.dump(result, f, indent=2)
-    print(f"Report saved to {report_path}")
+    # Save evaluation JSON
+    report_json_path = os.path.join(metrics_dir, f"evaluation_{split}.json")
+    with open(report_json_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+        
+    # Save prediction JSON
+    pred_json_path = os.path.join(predictions_dir, "prediction.json")
+    with open(pred_json_path, "w", encoding="utf-8") as f:
+        json.dump(sample_metrics, f, indent=2, ensure_ascii=False)
+        
+    # Save prediction CSV
+    pred_csv_path = os.path.join(predictions_dir, "predictions.csv")
+    with open(pred_csv_path, "w", encoding="utf-8", newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=["filename", "ground_truth", "predicted", "overall_confidence", "cer", "wer"])
+        writer.writeheader()
+        for sm in sample_metrics:
+            writer.writerow({
+                "filename": sm["filename"],
+                "ground_truth": sm["ground_truth"],
+                "predicted": sm["predicted"],
+                "overall_confidence": sm["overall_confidence"],
+                "cer": sm["cer"],
+                "wer": sm["wer"]
+            })
+            
+    # Save prediction TXT
+    pred_txt_path = os.path.join(predictions_dir, "prediction.txt")
+    with open(pred_txt_path, "w", encoding="utf-8") as f:
+        for sm in sample_metrics:
+            f.write(f"{sm['filename']} | GT: {sm['ground_truth']} | PR: {sm['predicted']} | CER: {sm['cer']} | CONF: {sm['overall_confidence']}\n")
+            
+    # Generate Markdown Report
+    md_report_path = os.path.join(reports_dir, f"evaluation_report.md")
+    with open(md_report_path, "w", encoding="utf-8") as f:
+        f.write(f"# OCR Evaluation Report\n\n")
+        f.write(f"- **Experiment ID**: {exp_id}\n")
+        f.write(f"- **Dataset Split**: {split}\n")
+        f.write(f"- **Number of Samples**: {len(dataset)}\n")
+        f.write(f"- **Checkpoint Used**: {os.path.basename(ckpt_path)}\n\n")
+        f.write(f"## Metrics\n\n")
+        f.write(f"- **CER**: {avg_cer:.4f}\n")
+        f.write(f"- **WER**: {avg_wer:.4f}\n")
+        f.write(f"- **Average Confidence**: {avg_conf:.4f}\n")
+        f.write(f"- **Average Inference Time**: {avg_inf_time:.2f} ms/sample\n")
+        
+    print(f"Reports saved to {metrics_dir}, {predictions_dir}, and {reports_dir}")
 
 def evaluate_trajectory(exp_id: str, split: str = "validation"):
     exp_dir = os.path.join("experiments", exp_id)
