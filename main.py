@@ -119,10 +119,12 @@ def cmd_resume(args):
     train_model(epochs=t_cfg.get("epochs", 100), exp_id=exp_id, batch_size=t_cfg.get("batch_size", 32), resume_checkpoint=ckpt_path)
 
 def cmd_evaluate(args):
-    print("Evaluation not yet implemented.")
+    from src.evaluation.evaluate import run_evaluation
+    run_evaluation(args.exp_id, args.split)
 
 def cmd_preview(args):
-    print("Preview not yet implemented.")
+    from src.evaluation.preview import run_preview
+    run_preview(args.exp_id, args.num_samples)
 
 def cmd_benchmark(args):
     print("Benchmark not yet implemented.")
@@ -182,6 +184,16 @@ def main():
     
     parser_train = subparsers.add_parser("train", help="Train trajectory generator")
     
+    # evaluate
+    parser_eval = subparsers.add_parser("evaluate", help="Evaluate a trained model")
+    parser_eval.add_argument("--exp_id", type=str, required=True, help="Experiment ID to evaluate")
+    parser_eval.add_argument("--split", type=str, default="validation", help="Dataset split to evaluate on (default: validation)")
+
+    # preview
+    parser_preview = subparsers.add_parser("preview", help="Generate previews from a trained model")
+    parser_preview.add_argument("--exp_id", type=str, required=True, help="Experiment ID to preview")
+    parser_preview.add_argument("--num_samples", type=int, default=5, help="Number of samples to preview (default: 5)")
+
     parser_resume = subparsers.add_parser("resume", help="Resume training")
     parser_resume.add_argument("--exp_id", type=str, required=True)
     
@@ -206,6 +218,10 @@ def main():
         cmd_info(args)
     elif args.command == "train":
         cmd_train(args)
+    elif args.command == "evaluate":
+        cmd_evaluate(args)
+    elif args.command == "preview":
+        cmd_preview(args)
     elif args.command == "resume":
         cmd_resume(args)
     elif args.command == "train-ocr":

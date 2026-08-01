@@ -93,6 +93,9 @@ def train_model(
     is_primary = (global_rank == 0)
 
     tracker = ExperimentTracker(exp_id=exp_id) if is_primary else None
+    
+    best_loss = float('inf')
+    best_dtw = float('inf')
 
     # We now strictly train on the canonical online dataset
     canonical_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "canonical", "online"))
@@ -250,14 +253,24 @@ def train_model(
             ckpt_dir = os.path.join(tracker.exp_dir, "checkpoints")
             os.makedirs(ckpt_dir, exist_ok=True)
             torch.save(ckpt_data, os.path.join(ckpt_dir, "latest.pt"))
-            # (In a real implementation, we would track best_loss, best_dtw over epochs and save accordingly)
-            best_dir = os.path.join(ckpt_dir, "best")
-            os.makedirs(best_dir, exist_ok=True)
-            # Dummy saving best for this epoch (just to satisfy structure)
-            torch.save(ckpt_data, os.path.join(best_dir, "loss.pt"))
-            if geo_metrics:
-                torch.save(ckpt_data, os.path.join(best_dir, "dtw.pt"))
-                torch.save(ckpt_data, os.path.join(best_dir, "endpoint.pt"))
+            
+            # Track best_loss, best_dtw over epochs and save accordingly
+            if avg_val_loss < best_loss:
+                best_loss = avg_val_loss
+                torch.save(ckpt_data, os.path.join(ckpt_dir, "best_loss.pt"))
+                
+            if geo_metrics and geo_metrics.get("dtw_mean") is not None:
+                current_dtw = geo_metrics["dtw_mean"]
+                if current_dtw < best_dtw:
+                    best_dtw = current_dtw
+                    torch.save(ckpt_data, os.path.join(ckpt_dir, "best_dtw.pt"))
+                    
+            if (epoch + 1) % 10 == 0:
+                try:
+                    from src.evaluation.preview import preview_trajectory
+                    preview_trajectory(exp_id, num_samples=3)
+                except Exception as e:
+                    print(f"Failed to generate preview: {e}")
             # Generate qualitative outputs only at the end of training to avoid overhead
             if epoch == epochs:
                 print("Generating final qualitative previews...")

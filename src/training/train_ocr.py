@@ -195,6 +195,13 @@ def train_ocr_model(
                 if mean_wer < best_wer:
                     best_wer = mean_wer
                     torch.save(ckpt_data, os.path.join(exp_dir, "best_wer.pt"))
+                    
+                if (epoch + 1) % 10 == 0:
+                    try:
+                        from src.evaluation.preview import preview_ocr
+                        preview_ocr(exp_id, num_samples=3)
+                    except Exception as e:
+                        print(f"Failed to generate OCR preview: {e}")
         else:
             if is_primary:
                 print(f"Epoch {epoch:03d} | Train: {avg_loss:.4f} | {epoch_time:.2f}s")
