@@ -50,9 +50,11 @@ def evaluate_ocr(exp_id: str, split: str = "validation"):
         return
         
     model.eval()
-    metrics = OCRMetrics(tokenizer)
     
     print(f"Starting OCR evaluation on {split} ({len(dataset)} samples)...")
+    
+    cer_scores = []
+    wer_scores = []
     
     with torch.no_grad():
         for images, targets_1d, target_lengths, raw_texts in loader:
@@ -67,10 +69,14 @@ def evaluate_ocr(exp_id: str, split: str = "validation"):
             pred_indices = preds.argmax(dim=-1)
             
             for b in range(images.size(0)):
-                pred_text = tokenizer.decode(pred_indices[b].cpu().tolist())
-                metrics.update(pred_text, raw_texts[b])
+                pred_text = tokenizer.decode(pred_indices[b].cpu().tolist(), remove_repeats=True)
+                cer_scores.append(OCRMetrics.compute_cer(raw_texts[b], pred_text))
+                wer_scores.append(OCRMetrics.compute_wer(raw_texts[b], pred_text))
                 
-    result = metrics.compute()
+    avg_cer = sum(cer_scores) / len(cer_scores) if cer_scores else float('nan')
+    avg_wer = sum(wer_scores) / len(wer_scores) if wer_scores else float('nan')
+    result = {"cer": avg_cer, "wer": avg_wer}
+    
     print(f"Evaluation complete.")
     print(f"CER: {result['cer']:.4f} | WER: {result['wer']:.4f}")
     
