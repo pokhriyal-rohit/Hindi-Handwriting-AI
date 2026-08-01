@@ -150,8 +150,8 @@ def evaluate_trajectory(exp_id: str, split: str = "validation"):
         json.dump({"DTW": avg_dtw, "EndpointError": avg_ee}, f, indent=2)
     print(f"Report saved to {report_path}")
 
-def run_evaluation(exp_id: str, split: str = "validation"):
-    if exp_id.endswith("_ocr"):
+def run_evaluation(exp_id: str, split: str = "validation", mode: str = "auto"):
+    if mode == "ocr" or exp_id.endswith("_ocr"):
         evaluate_ocr(exp_id, split)
     else:
         evaluate_trajectory(exp_id, split)

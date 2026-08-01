@@ -120,11 +120,13 @@ def cmd_resume(args):
 
 def cmd_evaluate(args):
     from src.evaluation.evaluate import run_evaluation
-    run_evaluation(args.exp_id, args.split)
+    mode = "ocr" if args.command == "evaluate-ocr" else "auto"
+    run_evaluation(args.exp_id, args.split, mode=mode)
 
 def cmd_preview(args):
     from src.evaluation.preview import run_preview
-    run_preview(args.exp_id, args.num_samples)
+    mode = "ocr" if args.command == "preview-ocr" else "auto"
+    run_preview(args.exp_id, args.num_samples, mode=mode)
 
 def cmd_benchmark(args):
     print("Benchmark not yet implemented.")
@@ -185,14 +187,24 @@ def main():
     parser_train = subparsers.add_parser("train", help="Train trajectory generator")
     
     # evaluate
-    parser_eval = subparsers.add_parser("evaluate", help="Evaluate a trained model")
+    parser_eval = subparsers.add_parser("evaluate", help="Evaluate a trained trajectory model")
     parser_eval.add_argument("--exp_id", type=str, required=True, help="Experiment ID to evaluate")
     parser_eval.add_argument("--split", type=str, default="validation", help="Dataset split to evaluate on (default: validation)")
 
+    # evaluate-ocr
+    parser_eval_ocr = subparsers.add_parser("evaluate-ocr", help="Evaluate a trained OCR model")
+    parser_eval_ocr.add_argument("--exp_id", type=str, required=True, help="Experiment ID to evaluate")
+    parser_eval_ocr.add_argument("--split", type=str, default="validation", help="Dataset split to evaluate on (default: validation)")
+
     # preview
-    parser_preview = subparsers.add_parser("preview", help="Generate previews from a trained model")
+    parser_preview = subparsers.add_parser("preview", help="Generate previews from a trained trajectory model")
     parser_preview.add_argument("--exp_id", type=str, required=True, help="Experiment ID to preview")
     parser_preview.add_argument("--num_samples", type=int, default=5, help="Number of samples to preview (default: 5)")
+
+    # preview-ocr
+    parser_preview_ocr = subparsers.add_parser("preview-ocr", help="Generate previews from a trained OCR model")
+    parser_preview_ocr.add_argument("--exp_id", type=str, required=True, help="Experiment ID to preview")
+    parser_preview_ocr.add_argument("--num_samples", type=int, default=5, help="Number of samples to preview (default: 5)")
 
     parser_resume = subparsers.add_parser("resume", help="Resume training")
     parser_resume.add_argument("--exp_id", type=str, required=True)
@@ -218,9 +230,9 @@ def main():
         cmd_info(args)
     elif args.command == "train":
         cmd_train(args)
-    elif args.command == "evaluate":
+    elif args.command in ["evaluate", "evaluate-ocr"]:
         cmd_evaluate(args)
-    elif args.command == "preview":
+    elif args.command in ["preview", "preview-ocr"]:
         cmd_preview(args)
     elif args.command == "resume":
         cmd_resume(args)

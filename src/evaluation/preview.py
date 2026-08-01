@@ -125,8 +125,8 @@ def preview_trajectory(exp_id: str, num_samples: int = 5):
             plot_trajectory_overlay(pred_traj, target_traj, out_path)
             print(f"Saved Trajectory preview to {out_path}")
 
-def run_preview(exp_id: str, num_samples: int = 5):
-    if exp_id.endswith("_ocr"):
+def run_preview(exp_id: str, num_samples: int = 5, mode: str = "auto"):
+    if mode == "ocr" or exp_id.endswith("_ocr"):
         preview_ocr(exp_id, num_samples)
     else:
         preview_trajectory(exp_id, num_samples)
