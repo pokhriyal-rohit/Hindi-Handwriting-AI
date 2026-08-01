@@ -139,9 +139,11 @@ def train_ocr_model(
             val_loss_total = 0.0
             cer_total = 0.0
             wer_total = 0.0
+            num_val_samples = 0
             
             with torch.no_grad():
                 for j, (images, input_lengths, texts, metadata) in enumerate(val_loader):
+                    num_val_samples += images.size(0)
                     images = images.to(device)
                     targets = [torch.tensor(tokenizer.encode(t), dtype=torch.long) for t in texts]
                     target_lengths = torch.tensor([len(t) for t in targets], dtype=torch.long).to(device)
@@ -169,8 +171,8 @@ def train_ocr_model(
                         break
                         
             avg_val_loss = val_loss_total / len(val_loader)
-            mean_cer = cer_total / len(val_dataset)
-            mean_wer = wer_total / len(val_dataset)
+            mean_cer = cer_total / max(1, num_val_samples)
+            mean_wer = wer_total / max(1, num_val_samples)
             
             if is_primary:
                 print(f"Epoch {epoch:03d} | Train: {avg_loss:.4f} | Val: {avg_val_loss:.4f} | CER: {mean_cer:.2f} | WER: {mean_wer:.2f} | {epoch_time:.2f}s")
