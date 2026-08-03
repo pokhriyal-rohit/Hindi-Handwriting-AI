@@ -10,10 +10,12 @@ except ImportError:
     fm = None
 
 
+import urllib.request
+
 def _get_devanagari_font(size: int = 12):
     """Return a FontProperties object backed by the best available Devanagari font.
     Searches for Noto Sans Devanagari (Kaggle/Linux) then Nirmala UI (Windows),
-    falling back to the matplotlib default if nothing suitable is found.
+    falling back to downloading a font if nothing suitable is found.
     """
     if fm is None:
         return None
@@ -31,14 +33,30 @@ def _get_devanagari_font(size: int = 12):
                 return fm.FontProperties(fname=path, size=size)
         except Exception:
             pass
-    # Last resort: search the system for any .ttf containing "Devanagari"
+            
+    # Last resort system search
     for font in fm.fontManager.ttflist:
-        if "devanagari" in font.name.lower() or "noto" in font.name.lower():
+        if "devanagari" in font.name.lower():
             try:
                 return fm.FontProperties(fname=font.fname, size=size)
             except Exception:
                 pass
-    return fm.FontProperties(size=size)
+                
+    # If not found locally, download to a 'fonts' directory
+    font_dir = os.path.join(os.path.dirname(__file__), "..", "..", "fonts")
+    os.makedirs(font_dir, exist_ok=True)
+    font_path = os.path.join(font_dir, "NotoSansDevanagari-Regular.ttf")
+    
+    if not os.path.exists(font_path):
+        url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf"
+        try:
+            print("Downloading Devanagari font for Matplotlib...")
+            urllib.request.urlretrieve(url, font_path)
+        except Exception as e:
+            print(f"Warning: Failed to download Devanagari font: {e}")
+            return fm.FontProperties(size=size)
+            
+    return fm.FontProperties(fname=font_path, size=size)
 from torch.utils.data import DataLoader, Subset
 from src.datasets.offline_dataset import OfflineDataset, offline_collate_fn
 from src.datasets.online_dataset import CanonicalTrajectoryDataset, synthetic_collate_fn
