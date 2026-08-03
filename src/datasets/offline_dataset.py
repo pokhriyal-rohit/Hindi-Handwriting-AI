@@ -30,6 +30,8 @@ class OfflineDataset(Dataset):
         if self.augment:
             transforms_list.extend([
                 T.RandomRotation(degrees=3, fill=255),
+                T.RandomAffine(degrees=0, translate=(0.02, 0.05), scale=(0.95, 1.05), fill=255),
+                T.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0)),
                 T.ColorJitter(brightness=0.2, contrast=0.2)
             ])
             
