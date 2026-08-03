@@ -84,9 +84,9 @@ def cmd_train(args):
     
     # Generate Experiment ID
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    runs_dir = "runs"
+    runs_dir = "experiments"
     os.makedirs(runs_dir, exist_ok=True)
-    existing_runs = [d for d in os.listdir(runs_dir) if os.path.isdir(os.path.join(runs_dir, d))]
+    existing_runs = [d for d in os.listdir(runs_dir) if os.path.isdir(os.path.join(runs_dir, d)) and d != "OCR"]
     exp_num = len(existing_runs) + 1
     arch_name = m_cfg.get("architecture", "baseline_lstm")
     exp_id = f"{date_str}_{exp_num:03d}_{arch_name}"
