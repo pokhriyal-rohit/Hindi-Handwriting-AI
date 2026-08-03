@@ -5,7 +5,7 @@ model_name: "crnn_baseline"
 
 # Optimizer settings
 batch_size: 64
-epochs: 1
+epochs: 50
 eval_every: 1
 learning_rate: 0.001
 

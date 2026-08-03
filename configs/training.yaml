@@ -1,5 +1,5 @@
 batch_size: 32
-epochs: 2
+epochs: 50
 learning_rate: 0.001
 optimizer: "adamw"
 weight_decay: 1e-4
