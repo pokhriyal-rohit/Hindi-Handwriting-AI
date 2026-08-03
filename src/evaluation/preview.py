@@ -4,8 +4,41 @@ import random
 import numpy as np
 try:
     import matplotlib.pyplot as plt
+    import matplotlib.font_manager as fm
 except ImportError:
     plt = None
+    fm = None
+
+
+def _get_devanagari_font(size: int = 12):
+    """Return a FontProperties object backed by the best available Devanagari font.
+    Searches for Noto Sans Devanagari (Kaggle/Linux) then Nirmala UI (Windows),
+    falling back to the matplotlib default if nothing suitable is found.
+    """
+    if fm is None:
+        return None
+    candidates = [
+        "Noto Sans Devanagari",
+        "Nirmala UI",
+        "Mangal",
+        "FreeSans",
+        "Lohit Devanagari",
+    ]
+    for name in candidates:
+        try:
+            path = fm.findfont(fm.FontProperties(family=name), fallback_to_default=False)
+            if path and "DejaVu" not in path and "STIXGeneral" not in path:
+                return fm.FontProperties(fname=path, size=size)
+        except Exception:
+            pass
+    # Last resort: search the system for any .ttf containing "Devanagari"
+    for font in fm.fontManager.ttflist:
+        if "devanagari" in font.name.lower() or "noto" in font.name.lower():
+            try:
+                return fm.FontProperties(fname=font.fname, size=size)
+            except Exception:
+                pass
+    return fm.FontProperties(size=size)
 from torch.utils.data import DataLoader, Subset
 from src.datasets.offline_dataset import OfflineDataset, offline_collate_fn
 from src.datasets.online_dataset import CanonicalTrajectoryDataset, synthetic_collate_fn
@@ -120,8 +153,9 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
                 f"Character Confidence:\n{char_conf_str}"
             )
             
-            ax2.text(0.0, 1.0, info_text, transform=ax2.transAxes, 
-                     fontsize=12, verticalalignment='top', fontname='Nirmala UI' if os.name == 'nt' else 'sans-serif')
+            deva_font = _get_devanagari_font(size=11)
+            ax2.text(0.0, 1.0, info_text, transform=ax2.transAxes,
+                     verticalalignment='top', fontproperties=deva_font)
             
             plt.tight_layout()
             out_path = os.path.join(preview_dir, f"preview_{i}.png")
