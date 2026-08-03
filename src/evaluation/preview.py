@@ -12,13 +12,14 @@ except ImportError:
 
 import urllib.request
 
-def _get_devanagari_font(size: int = 12):
-    """Return a FontProperties object backed by the best available Devanagari font.
-    Searches for Noto Sans Devanagari (Kaggle/Linux) then Nirmala UI (Windows),
-    falling back to downloading a font if nothing suitable is found.
-    """
+def setup_devanagari_font():
+    """Setup Matplotlib to use a Devanagari font with fallback to sans-serif."""
     if fm is None:
-        return None
+        return
+        
+    import warnings
+    warnings.filterwarnings("ignore", message="Glyph.*missing from font.*")
+    
     candidates = [
         "Noto Sans Devanagari",
         "Nirmala UI",
@@ -26,37 +27,49 @@ def _get_devanagari_font(size: int = 12):
         "FreeSans",
         "Lohit Devanagari",
     ]
+    
+    found_name = None
     for name in candidates:
         try:
             path = fm.findfont(fm.FontProperties(family=name), fallback_to_default=False)
             if path and "DejaVu" not in path and "STIXGeneral" not in path:
-                return fm.FontProperties(fname=path, size=size)
+                found_name = name
+                break
         except Exception:
             pass
             
-    # Last resort system search
-    for font in fm.fontManager.ttflist:
-        if "devanagari" in font.name.lower():
-            try:
-                return fm.FontProperties(fname=font.fname, size=size)
-            except Exception:
-                pass
+    if not found_name:
+        for font in fm.fontManager.ttflist:
+            if "devanagari" in font.name.lower():
+                found_name = font.name
+                break
                 
-    # If not found locally, download to a 'fonts' directory
-    font_dir = os.path.join(os.path.dirname(__file__), "..", "..", "fonts")
-    os.makedirs(font_dir, exist_ok=True)
-    font_path = os.path.join(font_dir, "NotoSansDevanagari-Regular.ttf")
-    
-    if not os.path.exists(font_path):
-        url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf"
+    if not found_name:
+        font_dir = os.path.join(os.path.dirname(__file__), "..", "..", "fonts")
+        os.makedirs(font_dir, exist_ok=True)
+        font_path = os.path.join(font_dir, "NotoSansDevanagari-Regular.ttf")
+        
+        if not os.path.exists(font_path):
+            url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf"
+            try:
+                print("Downloading Devanagari font for Matplotlib...")
+                urllib.request.urlretrieve(url, font_path)
+            except Exception as e:
+                print(f"Warning: Failed to download Devanagari font: {e}")
+                return
+                
         try:
-            print("Downloading Devanagari font for Matplotlib...")
-            urllib.request.urlretrieve(url, font_path)
+            fm.fontManager.addfont(font_path)
+            prop = fm.FontProperties(fname=font_path)
+            found_name = prop.get_name()
         except Exception as e:
-            print(f"Warning: Failed to download Devanagari font: {e}")
-            return fm.FontProperties(size=size)
+            print(f"Warning: Failed to load downloaded font: {e}")
+            return
             
-    return fm.FontProperties(fname=font_path, size=size)
+    if found_name:
+        if found_name not in plt.rcParams['font.sans-serif']:
+            plt.rcParams['font.sans-serif'] = [found_name] + plt.rcParams['font.sans-serif']
+        plt.rcParams['font.family'] = 'sans-serif'
 from torch.utils.data import DataLoader, Subset
 from src.datasets.offline_dataset import OfflineDataset, offline_collate_fn
 from src.datasets.online_dataset import CanonicalTrajectoryDataset, synthetic_collate_fn
@@ -71,6 +84,8 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
     if plt is None:
         print("Matplotlib not installed. Cannot preview.")
         return
+        
+    setup_devanagari_font()
         
     exp_dir = os.path.join("experiments", "OCR", exp_id)
     canonical_dir = os.path.join("data", "canonical", "offline", "validation")
@@ -171,9 +186,8 @@ def preview_ocr(exp_id: str, num_samples: int = 5):
                 f"Character Confidence:\n{char_conf_str}"
             )
             
-            deva_font = _get_devanagari_font(size=11)
             ax2.text(0.0, 1.0, info_text, transform=ax2.transAxes,
-                     verticalalignment='top', fontproperties=deva_font)
+                     verticalalignment='top', fontsize=11)
             
             plt.tight_layout()
             out_path = os.path.join(preview_dir, f"preview_{i}.png")
